@@ -217,7 +217,7 @@ tr:hover { background: #243249; }
                 <span id="apiStatus" class="status-badge">Disconnected</span>
             </div>
             <div class="form-group">
-                <label>API Key (Public Access)</label>
+                <label>API Key (Limited Access Recommended)</label>
                 <input id="apiKey" type="password" placeholder="Enter Torn API Key...">
             </div>
             <button class="btn-secondary" onclick="fetchTornData()">Fetch Profile Data</button>
@@ -267,7 +267,7 @@ tr:hover { background: #243249; }
 
             <div class="form-group">
                 <label>Energy Refill Cost (Points value in $)</label>
-                <input id="refillCost" type="number" value="900000" placeholder="Cost of 25 points">
+                <input id="refillCost" type="number" value="900000">
             </div>
 
             <div class="form-group">
@@ -395,6 +395,7 @@ async function fetchTornData() {
 
         playerMeta.innerHTML = `Connected as: <b>${profileData.name} [${profileData.player_id}]</b>`;
 
+        // FALLBACK UPGRADE: Wrapped the faction block inside a clean catch statement so public keys do not freeze execution
         try {
             const factionResponse = await fetch(`https://api.torn.com/faction/?selections=perks&key=${key}`);
             const factionData = await factionResponse.json();
@@ -409,12 +410,13 @@ async function fetchTornData() {
                 });
                 document.getElementById("voracity").value = voracityValue;
             }
+            statusEl.innerText = "Connected (Full)";
+            statusEl.style.background = "#22c55e";
         } catch (e) {
-            console.log("Faction parameters defaulted.");
+            console.log("Faction endpoint restricted. Using user-provided manual configurations for perks.");
+            statusEl.innerText = "Connected (User Only)";
+            statusEl.style.background = "#3b82f6"; // soft blue tracking state
         }
-
-        statusEl.innerText = "Connected";
-        statusEl.style.background = "#22c55e";
         
         calc();
 
@@ -439,11 +441,16 @@ function calc() {
     let rehab = +document.getElementById("rehab").value;
     let travelTime = +document.getElementById("travelType").value;
 
-    // Fixed internal timeline update assignments to prevent execution blocks
-    document.getElementById("tDvdCount").innerText = dvdMax;
-    document.getElementById("tRehabCost").innerText = "$" + rehab.toLocaleString();
-    document.getElementById("tTravelTime").innerText = travelTime + " mins";
-    document.getElementById("tTravelTime2").innerText = travelTime + " mins";
+    // Fixed UI text assignments to guarantee they load perfectly even on empty or default table calculations
+    const tDvdCount = document.getElementById("tDvdCount");
+    const tRehabCost = document.getElementById("tRehabCost");
+    const tTravelTime = document.getElementById("tTravelTime");
+    const tTravelTime2 = document.getElementById("tTravelTime2");
+
+    if(tDvdCount) tDvdCount.innerText = dvdMax;
+    if(tRehabCost) tRehabCost.innerText = "$" + rehab.toLocaleString();
+    if(tTravelTime) tTravelTime.innerText = travelTime + " mins";
+    if(tTravelTime2) tTravelTime2.innerText = travelTime + " mins";
 
     let hoursActive = end - start;
     let xanaxPerDay = Math.floor(hoursActive / 6);
@@ -477,11 +484,11 @@ function calc() {
             accumulatedCooldownHours += 4; 
         }
 
-        // CORRECTED FINANCIAL MATH MATRIX
+        // PERFECTED MATHEMATICAL EQUATION MATRIX
         let cost = (xanaxTakenThisDay * xCost);
         
         if (isJumpDay) {
-            // Include eDVD total volume cost, ecstasy unit cost, energy refill, and complete rehab allocation
+            // Evaluates total volume volume multiplication properly: (Quantity * Price) + Essentials + Rehab
             cost += (dvdsUsed * dvdCost) + ecstasyCost + refillCost + rehab;
         }
 
