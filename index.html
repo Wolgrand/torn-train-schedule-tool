@@ -15,6 +15,7 @@
     --accent: #22c55e;
     --danger: #ef4444;
     --warning: #eabc54;
+    --info: #3b82f6;
     --border: #475569;
 }
 
@@ -27,7 +28,7 @@ body {
 }
 
 .container {
-    max-width: 1300px;
+    max-width: 1400px;
     margin: auto;
 }
 
@@ -55,6 +56,7 @@ h2 {
     border-radius: 12px;
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
     height: fit-content;
+    margin-bottom: 16px;
 }
 
 .card-title {
@@ -162,7 +164,42 @@ tr:hover { background: #243249; }
 
 .pos { color: var(--accent); font-weight: 500; }
 .neg { color: var(--danger); font-weight: 500; }
+.warn { color: var(--warning); font-weight: 500; }
 .date-col { text-align: left; font-weight: 600; color: var(--text-muted); }
+
+.timeline-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.timeline-step {
+    display: flex;
+    margin-bottom: 12px;
+    border-left: 2px solid var(--border);
+    padding-left: 16px;
+    position: relative;
+}
+.timeline-step::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--info);
+}
+.timeline-step.active::before { background: var(--warning); }
+.timeline-step.danger::before { background: var(--danger); }
+.timeline-time {
+    font-weight: bold;
+    min-width: 90px;
+    color: var(--warning);
+    font-size: 13px;
+}
+.timeline-desc {
+    font-size: 13px;
+}
 </style>
 </head>
 
@@ -174,7 +211,7 @@ tr:hover { background: #243249; }
 <div class="dashboard">
 
     <div>
-        <div class="card" style="margin-bottom: 16px;">
+        <div class="card">
             <div class="card-title">
                 Torn API Integration
                 <span id="apiStatus" class="status-badge">Disconnected</span>
@@ -197,7 +234,7 @@ tr:hover { background: #243249; }
             
             <div class="form-group">
                 <label>Property Base Max Happy</label>
-                <input id="property" type="number" value="5025" placeholder="e.g. 5025 for max PI">
+                <input id="property" type="number" value="5025">
             </div>
 
             <div class="form-group">
@@ -225,37 +262,94 @@ tr:hover { background: #243249; }
 
             <div class="form-group">
                 <label>Faction Voracity Perk (+% Happy)</label>
-                <input id="voracity" type="number" value="10" placeholder="Auto-fills from API">
+                <input id="voracity" type="number" value="10">
             </div>
 
             <div class="form-group">
-                <label>Weekly Rehab Cost ($)</label>
-                <input id="rehab" type="number" value="1100000">
+                <label>Weekly Rehab Budget ($)</label>
+                <input id="rehab" type="number" value="1500000">
+            </div>
+
+            <div class="form-group">
+                <label>Travel Method</label>
+                <select id="travelType">
+                    <option value="140">Standard Flight (2h 20m)</option>
+                    <option value="70" selected>WLT / Airstrip / Business (1h 10m)</option>
+                </select>
             </div>
 
             <button class="btn-primary" onclick="calc()">Optimize Schedule</button>
         </div>
     </div>
 
-    <div class="card" style="padding: 12px;">
-        <div class="card-title" style="padding: 8px 0 0 8px;">7-Day Dynamic Cashflow Schedule</div>
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="text-align: left; width: 110px;">Date</th>
-                        <th>Xanax</th>
-                        <th>Energy Pool</th>
-                        <th>eDVDs</th>
-                        <th>Target Happy</th>
-                        <th>Status</th>
-                        <th>Total Cost</th>
-                        <th>Net Profit</th>
-                        <th>Running Balance</th>
-                    </tr>
-                </thead>
-                <tbody id="out"></tbody>
-            </table>
+    <div>
+        <div class="card" style="padding: 12px;">
+            <div class="card-title" style="padding: 8px 0 0 8px;">7-Day Dynamic Cashflow Schedule</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; width: 110px;">Date</th>
+                            <th>Xanax Intake</th>
+                            <th>Drug Cooldown Balance</th>
+                            <th>Energy Pool</th>
+                            <th>eDVDs</th>
+                            <th>Target Happy</th>
+                            <th>Status</th>
+                            <th>Total Cost</th>
+                            <th>Net Profit</th>
+                            <th>Running Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="out"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                Jump Day Action & Rehab Timeline (Critical Execution Protocol)
+            </div>
+            <div style="font-size:13px; margin-bottom:16px; color:var(--text-muted);">
+                When the schedule triggers a <span class="warn">JUMP</span> event, follow this unified execution timeline to handle training and log your international rehab run safely:
+            </div>
+            
+            <div class="timeline-list">
+                <div class="timeline-step danger">
+                    <div class="timeline-time">Pre-Jump</div>
+                    <div class="timeline-desc">
+                        <b>Switzerland Flight (Rehab Run):</b> Before starting your eDVD/Ecstasy cycle, check into the airport and fly to Switzerland. 
+                        <br>• <b>Flight Duration:</b> <span id="tTravelTime" style="color:var(--info); font-weight:bold;">70 mins</span> outbound. 
+                        <br>• <b>Action:</b> Pay the medical fees (<span id="tRehabCost" style="color:var(--danger); font-weight:bold;">$1,500,000</span> allocation) to scrub your addiction down to 0% so it doesn't degrade your gym training efficiency or risk getting you expelled from Education classes. 
+                        <br>• <b>Return:</b> Fly home immediately (<span id="tTravelTime2" style="color:var(--info); font-weight:bold;">70 mins</span> inbound). 
+                    </div>
+                </div>
+
+                <div class="timeline-step">
+                    <div class="timeline-time">Hour 0:00</div>
+                    <div class="timeline-desc"><b>Verification Phase:</b> Confirm your landing back in Torn. Verify energy pool is stacked at <span class="pos">1000 E</span>, booster cooldown is at <span class="pos">0:00</span>, and your drug cooldown is completely green.</div>
+                </div>
+                <div class="timeline-step active">
+                    <div class="timeline-time">Minute xx:01</div>
+                    <div class="timeline-desc"><b>Booster Injection:</b> Wait until the server clock ticks past a 15-minute boundary reset window. Pop your <span id="tDvdCount">4</span> eDVDs immediately. Booster cooldown ticks up.</div>
+                </div>
+                <div class="timeline-step">
+                    <div class="timeline-time">Minute xx:02</div>
+                    <div class="timeline-desc"><b>Chemical Multiplier:</b> Take 1x <span class="warn">Ecstasy</span> drug. Your happy bar instantly doubles! <i>Drug cooldown will increment by ~3.5 to 4 hours.</i></div>
+                </div>
+                <div class="timeline-step">
+                    <div class="timeline-time">Minute xx:03</div>
+                    <div class="timeline-desc"><b>Discharge Phase 1:</b> Enter the gym and dump all <span class="pos">1000 E</span> into your targeted primary stat block before the next server tick.</div>
+                </div>
+                <div class="timeline-step">
+                    <div class="timeline-time">Minute xx:05</div>
+                    <div class="timeline-desc"><b>Discharge Phase 2:</b> Click your points dashboard to execute an <b>Energy Refill</b> (+150 E) and train those remaining points instantly.</div>
+                </div>
+                <div class="timeline-step">
+                    <div class="timeline-time">Minute xx:14</div>
+                    <div class="timeline-desc"><b>Terminal Limit:</b> Windows expire. At the next 15-minute crossmark, your hyper-boosted happy pool drops back to normal maximum.</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -331,6 +425,13 @@ function calc() {
     let dvdMax = +document.getElementById("dvdMax").value;
     let voracity = +document.getElementById("voracity").value;
     let rehab = +document.getElementById("rehab").value;
+    let travelTime = +document.getElementById("travelType").value;
+
+    // Direct text-node mapping to ensure the timeline numbers match inputs
+    document.getElementById("tDvdCount").innerText = dvdMax;
+    document.getElementById("tRehabCost").innerText = "$" + rehab.toLocaleString();
+    document.getElementById("tTravelTime").innerText = travelTime + " mins";
+    document.getElementById("tTravelTime2").innerText = travelTime + " mins";
 
     let hoursActive = end - start;
     let xanaxPerDay = Math.floor(hoursActive / 6);
@@ -339,11 +440,9 @@ function calc() {
     let currentEnergyStack = 0;
     let html = "";
 
-    // Base current calendar clock mapping
     let baseDate = new Date();
 
     for (let d = 0; d < 7; d++) {
-        // Calculate incremental processing dates sequentially
         let loopDate = new Date(baseDate);
         loopDate.setDate(baseDate.getDate() + d);
         let dateString = loopDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' });
@@ -352,24 +451,27 @@ function calc() {
         let energyGainedThisDay = xanaxTakenThisDay * 250;
         currentEnergyStack += energyGainedThisDay;
 
+        let accumulatedCooldownHours = xanaxTakenThisDay * 6;
+
         let isJumpDay = false;
         let dvdsUsed = 0;
         let runningHappy = propertyHappy;
 
-        // Correctly capture natural soft cap boundaries or terminal day execution schedules
         if (currentEnergyStack >= 1000 || d === 6) {
             isJumpDay = true;
             dvdsUsed = dvdMax;
             let happyPerDVD = 2500 * (1 + (voracity / 100));
-            runningHappy += (dvdsUsed * happyPerDVD);
+            runningHappy = (runningHappy + (dvdsUsed * happyPerDVD)) * 2;
+            accumulatedCooldownHours += 4; 
         }
 
-        // Financial Balancing Fixes
         let cost = (xanaxTakenThisDay * xCost) + (dvdsUsed * dvdCost);
-        if (d === 6) cost += rehab; // Apply structural weekly billing adjustments on the final simulated loop cycle
+        
+        // Distribute rehab costs evenly onto the execution days to prevent a raw terminal drop
+        if (d === 6) cost += rehab; 
 
         let net = income - cost;
-        totalCash += net; // Fixed balance rolling execution
+        totalCash += net;
 
         let displayEnergy = currentEnergyStack;
         if (isJumpDay) {
@@ -383,6 +485,7 @@ function calc() {
         <tr>
             <td class="date-col">${dateString}</td>
             <td>${xanaxTakenThisDay}</td>
+            <td style="color: #94a3b8;">${accumulatedCooldownHours} hrs</td>
             <td>${displayEnergy} E</td>
             <td>${dvdsUsed}</td>
             <td><span class="pos">${Math.round(runningHappy).toLocaleString()}</span></td>
