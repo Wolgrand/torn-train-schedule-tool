@@ -27,7 +27,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1300px;
     margin: auto;
 }
 
@@ -45,7 +45,7 @@ h2 {
     gap: 20px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
     .dashboard { grid-template-columns: 1fr; }
 }
 
@@ -162,6 +162,7 @@ tr:hover { background: #243249; }
 
 .pos { color: var(--accent); font-weight: 500; }
 .neg { color: var(--danger); font-weight: 500; }
+.date-col { text-align: left; font-weight: 600; color: var(--text-muted); }
 </style>
 </head>
 
@@ -179,7 +180,7 @@ tr:hover { background: #243249; }
                 <span id="apiStatus" class="status-badge">Disconnected</span>
             </div>
             <div class="form-group">
-                <label>API Key (Minimal/Public Access)</label>
+                <label>API Key (Public Access)</label>
                 <input id="apiKey" type="password" placeholder="Enter Torn API Key...">
             </div>
             <button class="btn-secondary" onclick="fetchTornData()">Fetch Profile Data</button>
@@ -196,7 +197,7 @@ tr:hover { background: #243249; }
             
             <div class="form-group">
                 <label>Property Base Max Happy</label>
-                <input id="property" type="number" value="5025" placeholder="Auto-fills from API or change manually">
+                <input id="property" type="number" value="5025" placeholder="e.g. 5025 for max PI">
             </div>
 
             <div class="form-group">
@@ -237,20 +238,20 @@ tr:hover { background: #243249; }
     </div>
 
     <div class="card" style="padding: 12px;">
-        <div class="card-title" style="padding: 8px 0 0 8px;">Simulated 7-Day Routine</div>
+        <div class="card-title" style="padding: 8px 0 0 8px;">7-Day Dynamic Cashflow Schedule</div>
         <div class="table-wrapper">
             <table>
                 <thead>
                     <tr>
-                        <th>Day</th>
-                        <th>Xanax Taken</th>
-                        <th>Current Stacking E</th>
-                        <th>eDVDs Used</th>
+                        <th style="text-align: left; width: 110px;">Date</th>
+                        <th>Xanax</th>
+                        <th>Energy Pool</th>
+                        <th>eDVDs</th>
                         <th>Target Happy</th>
-                        <th>Jump Event?</th>
+                        <th>Status</th>
                         <th>Total Cost</th>
                         <th>Net Profit</th>
-                        <th>Balance Sheet</th>
+                        <th>Running Balance</th>
                     </tr>
                 </thead>
                 <tbody id="out"></tbody>
@@ -263,7 +264,6 @@ tr:hover { background: #243249; }
 </div>
 
 <script>
-// Fetch Live Data from Torn API
 async function fetchTornData() {
     const key = document.getElementById("apiKey").value.trim();
     const statusEl = document.getElementById("apiStatus");
@@ -275,10 +275,9 @@ async function fetchTornData() {
     }
 
     statusEl.innerText = "Connecting...";
-    statusEl.style.background = varToString('--warning');
+    statusEl.style.background = "#eabc54";
 
     try {
-        // Request profiles (bars/properties for Max Happy) and structure perks via faction
         const profileResponse = await fetch(`https://api.torn.com/user/?selections=profile,bars&key=${key}`);
         const profileData = await profileResponse.json();
 
@@ -286,25 +285,20 @@ async function fetchTornData() {
             throw new Error(profileData.error.error || "Invalid API Key");
         }
 
-        // 1. Calculate & populate Max Happy
         if (profileData.happy && profileData.happy.maximum) {
             document.getElementById("property").value = profileData.happy.maximum;
         }
 
-        // Display basic player context info
         playerMeta.innerHTML = `Connected as: <b>${profileData.name} [${profileData.player_id}]</b>`;
 
-        // 2. Safely try parsing faction data to scan for Voracity Perk levels
         try {
             const factionResponse = await fetch(`https://api.torn.com/faction/?selections=perks&key=${key}`);
             const factionData = await factionResponse.json();
 
             if (factionData.perks) {
-                // Look for the Voracity perk string that maps to candy/booster happy boosts
                 let voracityValue = 0;
                 factionData.perks.forEach(perk => {
                     if (perk.key && perk.key.toLowerCase().includes("voracity")) {
-                        // Extract numeric value from description or use step increments if found
                         let match = perk.description.match(/\d+/);
                         if (match) voracityValue = parseInt(match[0]);
                     }
@@ -312,28 +306,21 @@ async function fetchTornData() {
                 document.getElementById("voracity").value = voracityValue;
             }
         } catch (e) {
-            console.log("Faction perks data could not be parsed automatically. Defaulting to fallback parameters.");
+            console.log("Faction parameters defaulted.");
         }
 
         statusEl.innerText = "Connected";
-        statusEl.style.background = "#22c55e"; // soft green
+        statusEl.style.background = "#22c55e";
         
-        // Re-run the optimizer schedule automatically with the new data points
         calc();
 
     } catch (err) {
         statusEl.innerText = "Error";
-        statusEl.style.background = "#ef4444"; // danger red
+        statusEl.style.background = "#ef4444";
         playerMeta.innerHTML = `<span style="color:var(--danger)">${err.message}</span>`;
     }
 }
 
-// Simple internal helper to access CSS variables safely inside inline JS assignments
-function varToString(varName) {
-    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-}
-
-// Logic Engine Core
 function calc() {
     let income = +document.getElementById("income").value;
     let propertyHappy = +document.getElementById("property").value;
@@ -346,14 +333,21 @@ function calc() {
     let rehab = +document.getElementById("rehab").value;
 
     let hoursActive = end - start;
-    let cooldown = 6; 
-    let xanaxPerDay = Math.floor(hoursActive / cooldown);
+    let xanaxPerDay = Math.floor(hoursActive / 6);
 
     let totalCash = 0;
     let currentEnergyStack = 0;
     let html = "";
 
-    for (let d = 1; d <= 7; d++) {
+    // Base current calendar clock mapping
+    let baseDate = new Date();
+
+    for (let d = 0; d < 7; d++) {
+        // Calculate incremental processing dates sequentially
+        let loopDate = new Date(baseDate);
+        loopDate.setDate(baseDate.getDate() + d);
+        let dateString = loopDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' });
+
         let xanaxTakenThisDay = xanaxPerDay;
         let energyGainedThisDay = xanaxTakenThisDay * 250;
         currentEnergyStack += energyGainedThisDay;
@@ -362,20 +356,20 @@ function calc() {
         let dvdsUsed = 0;
         let runningHappy = propertyHappy;
 
-        if (currentEnergyStack >= 1000 || d === 7) {
+        // Correctly capture natural soft cap boundaries or terminal day execution schedules
+        if (currentEnergyStack >= 1000 || d === 6) {
             isJumpDay = true;
             dvdsUsed = dvdMax;
-            
-            // Core calculations: Base 2500 per eDVD modified by Voracity Perk
             let happyPerDVD = 2500 * (1 + (voracity / 100));
             runningHappy += (dvdsUsed * happyPerDVD);
         }
 
+        // Financial Balancing Fixes
         let cost = (xanaxTakenThisDay * xCost) + (dvdsUsed * dvdCost);
-        if (d === 7) cost += rehab; 
+        if (d === 6) cost += rehab; // Apply structural weekly billing adjustments on the final simulated loop cycle
 
         let net = income - cost;
-        totalCash += net;
+        totalCash += net; // Fixed balance rolling execution
 
         let displayEnergy = currentEnergyStack;
         if (isJumpDay) {
@@ -387,7 +381,7 @@ function calc() {
 
         html += `
         <tr>
-            <td><b>Day ${d}</b></td>
+            <td class="date-col">${dateString}</td>
             <td>${xanaxTakenThisDay}</td>
             <td>${displayEnergy} E</td>
             <td>${dvdsUsed}</td>
