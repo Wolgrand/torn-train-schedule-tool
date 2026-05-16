@@ -173,7 +173,6 @@ td {
 .warn { color: var(--warning); font-weight: 500; }
 .date-col { text-align: left; font-weight: 600; color: var(--text-muted); }
 
-/* Horizontal Hourly Micro Timeline Drawer Styles */
 .drawer-row {
     background: #0b111e;
     display: none;
@@ -181,67 +180,131 @@ td {
 .drawer-row.open {
     display: table-row;
 }
-.timeline-horizontal {
-    display: flex;
-    overflow-x: auto;
-    padding: 16px 8px;
-    gap: 12px;
-    background: #111827;
+
+/* ==========================================================================
+   ADVANCED TRAVEL-STYLE VECTOR LINE TIMELINE INTERFACE
+   ========================================================================== */
+.timeline-track-container {
+    background: #090d16;
+    padding: 40px 24px;
     border-radius: 8px;
-    margin: 8px;
-    border: 1px solid var(--border);
+    margin: 12px 8px;
+    border: 1px solid #1e293b;
+    overflow-x: auto;
 }
-.timeline-block {
-    flex: 0 0 130px;
-    background: #1e293b;
-    border-radius: 6px;
-    padding: 10px;
-    border-top: 3px solid var(--border);
-    text-align: left;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-.timeline-block.xanax { border-top-color: var(--info); }
-.timeline-block.jump { border-top-color: var(--warning); background: #2d221c; }
-.timeline-block.clear { border-top-color: var(--accent); }
 
-.block-hour { font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 4px;}
-.block-cd { font-size: 11px; color: var(--text-muted); font-family: monospace; }
-.block-action { font-size: 11px; font-weight: 600; margin-top: 6px; padding-top: 4px; border-top: 1px solid #334155;}
-
-.timeline-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-.timeline-step {
-    display: flex;
-    margin-bottom: 12px;
-    border-left: 2px solid var(--border);
-    padding-left: 16px;
+.vector-timeline-axis {
     position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    min-width: 750px;
+    height: 4px;
+    background: #273549; /* Main horizontal axis line track */
+    margin: 40px 0;
+    border-radius: 2px;
 }
-.timeline-step::before {
-    content: '';
-    position: absolute;
-    left: -6px;
-    top: 4px;
+
+/* Node Anchor Points */
+.timeline-node {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Center Core Pointer Indicators */
+.node-dot {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: var(--info);
-}
-.timeline-step.active::before { background: var(--warning); }
-.timeline-step.danger::before { background: var(--danger); }
-.timeline-time {
-    font-weight: bold;
-    min-width: 90px;
-    color: var(--warning);
-    font-size: 13px;
-}
-.timeline-desc {
-    font-size: 13px;
+    background: #475569;
+    border: 2px solid #090d16;
+    z-index: 2;
+    transition: transform 0.2s;
 }
 
+/* Node Variants Based on Actions Checked */
+.timeline-node.active .node-dot {
+    background: #fff;
+    box-shadow: 0 0 0 3px var(--info);
+}
+
+.timeline-node.cooldown-zero .node-dot {
+    background: #090d16;
+    border: 3px solid var(--accent);
+    width: 12px;
+    height: 12px;
+}
+
+.timeline-node.flag-node .node-dot {
+    display: none; /* Replaced directly by the round flag bubble component */
+}
+
+/* Flag Circle Bubble Interface Design */
+.node-flag-bubble {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--info);
+    background-size: cover;
+    background-position: center;
+    z-index: 3;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.flag-ch {
+    background-image: linear-gradient(to right, #d81c24 33%, #fff 33%, #fff 66%, #d81c24 66%); /* Switzerland Mock Vector Flag */
+}
+.flag-home {
+    background: var(--warning);
+    font-size: 14px;
+}
+
+/* Top Timestamp Overlay text lines */
+.node-time {
+    position: absolute;
+    bottom: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+}
+
+/* Bottom Data Metrics Grid Layout Boxes */
+.node-meta-box {
+    position: absolute;
+    top: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    min-width: 110px;
+}
+
+.node-icon-asset {
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+.node-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.node-subtext {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    margin-top: 1px;
+}
+
+/* Global Countdown styles */
 .countdown-grid {
     display: flex;
     gap: 24px;
@@ -267,6 +330,14 @@ td {
     text-transform: uppercase;
     margin-top: 2px;
 }
+
+.timeline-list { list-style: none; padding: 0; margin: 0; }
+.timeline-step { display: flex; margin-bottom: 12px; border-left: 2px solid var(--border); padding-left: 16px; position: relative; }
+.timeline-step::before { content: ''; position: absolute; left: -6px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--info); }
+.timeline-step.active::before { background: var(--warning); }
+.timeline-step.danger::before { background: var(--danger); }
+.timeline-time { font-weight: bold; min-width: 90px; color: var(--warning); font-size: 13px; }
+.timeline-desc { font-size: 13px; }
 </style>
 </head>
 
@@ -376,7 +447,7 @@ td {
 
         <div class="card" style="padding: 12px;">
             <div class="card-title" style="padding: 8px 0 0 8px; margin-bottom: 4px;">7-Day Dynamic Cashflow Schedule</div>
-            <div style="font-size:12px; color:var(--text-muted); padding-left:8px; margin-bottom:12px;">💡 Click any day row below to view its detailed hourly horizontal timeline.</div>
+            <div style="font-size:12px; color:var(--text-muted); padding-left:8px; margin-bottom:12px;">💡 Click any day row below to expand the fluid vector flight/cooldown map timeline.</div>
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -609,52 +680,85 @@ function calc() {
         let netClass = net >= 0 ? "pos" : "neg";
         let cashClass = totalCash >= 0 ? "pos" : "neg";
 
-        // Hourly Horizontal Timeline Generation Engine
-        let timelineHtml = "";
-        let currentCD = 0;
-        let xanaxLeftToTake = xanaxTakenThisDay;
+        // ==================================================================
+        // TRAVEL INTERFACE TIMELINE TRACK GENERATOR
+        // ==================================================================
+        let trackNodesHtml = "";
+        let travelFlightOffsetHours = Math.round(travelTime / 60);
 
-        for (let hour = 0; hour <= 24; hour++) {
-            let blockClass = "clear";
-            let statusText = "Cooldown: 0h";
-            let actionText = "Idle / Gym training";
-
-            // Decay cooldown calculation
-            if (currentCD > 0) currentCD--;
-
-            // Logic matching sleep schedules and intake sequences
-            if (hour >= start && hour <= end) {
-                if (xanaxLeftToTake > 0 && currentCD === 0) {
-                    blockClass = "xanax";
-                    currentCD = 6; 
-                    statusText = `Cooldown: +${currentCD}h`;
-                    actionText = "💊 Take 1x Xanax (+250E)";
-                    xanaxLeftToTake--;
-                } else if (currentCD > 0) {
-                    blockClass = "clear";
-                    statusText = `Cooldown: ${currentCD}h remaining`;
-                    actionText = "Stacking Energy Pool";
-                }
-            }
-
-            // Inject the custom final execution blocks on Jump Trigger
-            if (isJumpDay && hour === (end - 1)) {
-                blockClass = "jump";
-                statusText = "🔥 WINDOW READY";
-                actionText = `🇨🇭 Rehab Run ($${rehab.toLocaleString()}) -> Use eDVDs & Ecstasy -> Train 1150E`;
-            }
-
-            // Display critical markers to make timeline scannable
-            if (hour === 0 || hour === start || hour === end || blockClass === "xanax" || blockClass === "jump" || (currentCD === 0 && hour > start && hour < end)) {
-                let hourString = String(hour).padStart(2, '0') + ":00";
-                timelineHtml += `
-                    <div class="timeline-block ${blockClass}">
-                        <div class="block-hour">${hourString}</div>
-                        <div class="block-cd">${statusText}</div>
-                        <div class="block-action">${actionText}</div>
+        if (!isJumpDay) {
+            // Standard Tracking Progression Vector Layout
+            let currentCDClock = 0;
+            for (let i = 0; i < xanaxTakenThisDay; i++) {
+                let xanaxHour = start + (i * 6);
+                trackNodesHtml += `
+                    <div class="timeline-node active">
+                        <div class="node-time">${String(xanaxHour).padStart(2, '0')}:00</div>
+                        <div class="node-dot"></div>
+                        <div class="node-meta-box">
+                            <div class="node-icon-asset">💊</div>
+                            <div class="node-label">Take Xanax</div>
+                            <div class="node-subtext">+250 E (CD: +6h)</div>
+                        </div>
                     </div>
                 `;
             }
+            // End of day clearing point node
+            trackNodesHtml += `
+                <div class="timeline-node cooldown-zero">
+                    <div class="node-time">${String(end).padStart(2, '0')}:00</div>
+                    <div class="node-dot"></div>
+                    <div class="node-meta-box">
+                        <div class="node-icon-asset">✅</div>
+                        <div class="node-label">End Stacking</div>
+                        <div class="node-subtext">Pool Saved Safely</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // High Tier Jump Event Vector Configuration Map
+            let flightOutboundHour = Math.max(0, (end - 1) - (travelFlightOffsetHours * 2));
+            let rehabCheckHour = Math.max(0, (end - 1) - travelFlightOffsetHours);
+            let jumpExecutionHour = end - 1;
+
+            trackNodesHtml += `
+                <div class="timeline-node flag-node">
+                    <div class="node-time">${String(flightOutboundHour).padStart(2, '0')}:00</div>
+                    <div class="node-flag-bubble flag-home">✈️</div>
+                    <div class="node-meta-box">
+                        <div class="node-label" style="color:var(--info);">Depart Home</div>
+                        <div class="node-subtext">Flight Outbound</div>
+                    </div>
+                </div>
+
+                <div class="timeline-node flag-node">
+                    <div class="node-time">${String(rehabCheckHour).padStart(2, '0')}:10</div>
+                    <div class="node-flag-bubble flag-ch"></div>
+                    <div class="node-meta-box">
+                        <div class="node-label" style="color:var(--danger);">Switzerland</div>
+                        <div class="node-subtext">🇨🇭 Rehab: +$${rehab.toLocaleString()}</div>
+                    </div>
+                </div>
+
+                <div class="timeline-node flag-node">
+                    <div class="node-time">${String(jumpExecutionHour).padStart(2, '0')}:00</div>
+                    <div class="node-flag-bubble flag-home">🏡</div>
+                    <div class="node-meta-box">
+                        <div class="node-label" style="color:var(--accent);">Landed Home</div>
+                        <div class="node-subtext">Cooldowns: 0:00</div>
+                    </div>
+                </div>
+
+                <div class="timeline-node active jump">
+                    <div class="node-time" style="color:var(--warning);">${String(jumpExecutionHour).padStart(2, '0')}:15</div>
+                    <div class="node-dot" style="box-shadow: 0 0 0 3px var(--warning);"></div>
+                    <div class="node-meta-box">
+                        <div class="node-icon-asset">🔥</div>
+                        <div class="node-label" style="color:var(--warning);">HAPPY JUMP</div>
+                        <div class="node-subtext">Train 1150 E Pool</div>
+                    </div>
+                </div>
+            `;
         }
 
         html += `
@@ -672,9 +776,10 @@ function calc() {
         </tr>
         <tr class="drawer-row" id="drawer-${d}">
             <td colspan="10">
-                <div style="padding: 4px 12px; font-weight:600; font-size:11px; color:var(--text-muted); text-transform:uppercase;">Daily Hourly Flowchart Blueprint:</div>
-                <div class="timeline-horizontal">
-                    ${timelineHtml}
+                <div class="timeline-track-container">
+                    <div class="vector-timeline-axis">
+                        ${trackNodesHtml}
+                    </div>
                 </div>
             </td>
         </tr>
