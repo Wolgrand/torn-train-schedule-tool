@@ -160,12 +160,53 @@ td {
     text-align: center;
 }
 
-tr:hover { background: #243249; }
+.clickable-row {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.clickable-row:hover { 
+    background: #243249 !important; 
+}
 
 .pos { color: var(--accent); font-weight: 500; }
 .neg { color: var(--danger); font-weight: 500; }
 .warn { color: var(--warning); font-weight: 500; }
 .date-col { text-align: left; font-weight: 600; color: var(--text-muted); }
+
+/* Horizontal Hourly Micro Timeline Drawer Styles */
+.drawer-row {
+    background: #0b111e;
+    display: none;
+}
+.drawer-row.open {
+    display: table-row;
+}
+.timeline-horizontal {
+    display: flex;
+    overflow-x: auto;
+    padding: 16px 8px;
+    gap: 12px;
+    background: #111827;
+    border-radius: 8px;
+    margin: 8px;
+    border: 1px solid var(--border);
+}
+.timeline-block {
+    flex: 0 0 130px;
+    background: #1e293b;
+    border-radius: 6px;
+    padding: 10px;
+    border-top: 3px solid var(--border);
+    text-align: left;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.timeline-block.xanax { border-top-color: var(--info); }
+.timeline-block.jump { border-top-color: var(--warning); background: #2d221c; }
+.timeline-block.clear { border-top-color: var(--accent); }
+
+.block-hour { font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 4px;}
+.block-cd { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+.block-action { font-size: 11px; font-weight: 600; margin-top: 6px; padding-top: 4px; border-top: 1px solid #334155;}
 
 .timeline-list {
     list-style: none;
@@ -201,7 +242,6 @@ tr:hover { background: #243249; }
     font-size: 13px;
 }
 
-/* Next Jump Card Metrics Layout Styling */
 .countdown-grid {
     display: flex;
     gap: 24px;
@@ -335,7 +375,8 @@ tr:hover { background: #243249; }
         </div>
 
         <div class="card" style="padding: 12px;">
-            <div class="card-title" style="padding: 8px 0 0 8px;">7-Day Dynamic Cashflow Schedule</div>
+            <div class="card-title" style="padding: 8px 0 0 8px; margin-bottom: 4px;">7-Day Dynamic Cashflow Schedule</div>
+            <div style="font-size:12px; color:var(--text-muted); padding-left:8px; margin-bottom:12px;">💡 Click any day row below to view its detailed hourly horizontal timeline.</div>
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -469,6 +510,13 @@ async function fetchTornData() {
     }
 }
 
+function toggleDrawer(dayIndex) {
+    const drawer = document.getElementById(`drawer-${dayIndex}`);
+    if (drawer) {
+        drawer.classList.toggle('open');
+    }
+}
+
 function calc() {
     let income = +document.getElementById("income").value;
     let propertyHappy = +document.getElementById("property").value;
@@ -508,27 +556,39 @@ function calc() {
         loopDate.setDate(baseDate.getDate() + d);
         let dateString = loopDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' });
 
+        let isJumpDay = false;
         let xanaxTakenThisDay = xanaxPerDay;
-        let energyGainedThisDay = xanaxTakenThisDay * 250;
-        currentEnergyStack += energyGainedThisDay;
+        
+        if (currentEnergyStack >= 1000) {
+            isJumpDay = true;
+            xanaxTakenThisDay = 0;
+        } else {
+            let spaceLeft = 1000 - currentEnergyStack;
+            let plannedEnergyGained = xanaxPerDay * 250;
+            
+            if (plannedEnergyGained >= spaceLeft) {
+                isJumpDay = true;
+                xanaxTakenThisDay = Math.ceil(spaceLeft / 250);
+                currentEnergyStack = 1000;
+            } else {
+                currentEnergyStack += plannedEnergyGained;
+            }
+        }
+
+        if (d === 6) isJumpDay = true;
 
         let accumulatedCooldownHours = xanaxTakenThisDay * 6;
-
-        let isJumpDay = false;
         let dvdsUsed = 0;
         let runningHappy = propertyHappy;
 
-        if (currentEnergyStack >= 1000 || d === 6) {
-            isJumpDay = true;
+        if (isJumpDay) {
             dvdsUsed = dvdMax;
             let happyPerDVD = 2500 * (1 + (voracity / 100));
             runningHappy = (runningHappy + (dvdsUsed * happyPerDVD)) * 2;
             accumulatedCooldownHours += 4; 
 
-            // Safely anchor the earliest physical date tracking instance to display in our metadata card
             if (!computedTargetDate) {
                 computedTargetDate = new Date(loopDate);
-                // Set to target evening/execution time frame matching the configuration parameters
                 computedTargetDate.setHours(end - 1, 0, 0, 0); 
             }
         }
@@ -549,9 +609,57 @@ function calc() {
         let netClass = net >= 0 ? "pos" : "neg";
         let cashClass = totalCash >= 0 ? "pos" : "neg";
 
+        // Hourly Horizontal Timeline Generation Engine
+        let timelineHtml = "";
+        let currentCD = 0;
+        let xanaxLeftToTake = xanaxTakenThisDay;
+
+        for (let hour = 0; hour <= 24; hour++) {
+            let blockClass = "clear";
+            let statusText = "Cooldown: 0h";
+            let actionText = "Idle / Gym training";
+
+            // Decay cooldown calculation
+            if (currentCD > 0) currentCD--;
+
+            // Logic matching sleep schedules and intake sequences
+            if (hour >= start && hour <= end) {
+                if (xanaxLeftToTake > 0 && currentCD === 0) {
+                    blockClass = "xanax";
+                    currentCD = 6; 
+                    statusText = `Cooldown: +${currentCD}h`;
+                    actionText = "💊 Take 1x Xanax (+250E)";
+                    xanaxLeftToTake--;
+                } else if (currentCD > 0) {
+                    blockClass = "clear";
+                    statusText = `Cooldown: ${currentCD}h remaining`;
+                    actionText = "Stacking Energy Pool";
+                }
+            }
+
+            // Inject the custom final execution blocks on Jump Trigger
+            if (isJumpDay && hour === (end - 1)) {
+                blockClass = "jump";
+                statusText = "🔥 WINDOW READY";
+                actionText = `🇨🇭 Rehab Run ($${rehab.toLocaleString()}) -> Use eDVDs & Ecstasy -> Train 1150E`;
+            }
+
+            // Display critical markers to make timeline scannable
+            if (hour === 0 || hour === start || hour === end || blockClass === "xanax" || blockClass === "jump" || (currentCD === 0 && hour > start && hour < end)) {
+                let hourString = String(hour).padStart(2, '0') + ":00";
+                timelineHtml += `
+                    <div class="timeline-block ${blockClass}">
+                        <div class="block-hour">${hourString}</div>
+                        <div class="block-cd">${statusText}</div>
+                        <div class="block-action">${actionText}</div>
+                    </div>
+                `;
+            }
+        }
+
         html += `
-        <tr>
-            <td class="date-col">${dateString}</td>
+        <tr class="clickable-row" onclick="toggleDrawer(${d})">
+            <td class="date-col">▶ ${dateString}</td>
             <td>${xanaxTakenThisDay}</td>
             <td style="color: #94a3b8;">${accumulatedCooldownHours} hrs</td>
             <td>${isJumpDay ? displayEnergy + ' + 150' : displayEnergy} E</td>
@@ -562,12 +670,19 @@ function calc() {
             <td class="${netClass}">$${net.toLocaleString()}</td>
             <td class="${cashClass}">$${totalCash.toLocaleString()}</td>
         </tr>
+        <tr class="drawer-row" id="drawer-${d}">
+            <td colspan="10">
+                <div style="padding: 4px 12px; font-weight:600; font-size:11px; color:var(--text-muted); text-transform:uppercase;">Daily Hourly Flowchart Blueprint:</div>
+                <div class="timeline-horizontal">
+                    ${timelineHtml}
+                </div>
+            </td>
+        </tr>
         `;
     }
 
     document.getElementById("out").innerHTML = html;
 
-    // Trigger calculation engine update loop to sync countdown cards
     if (computedTargetDate) {
         globalJumpTargetTime = computedTargetDate.getTime();
         document.getElementById("targetTimestamp").innerHTML = computedTargetDate.toLocaleDateString('en-US', { 
@@ -597,7 +712,6 @@ function startLiveCountdown() {
         let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         let seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        // Format formatting pad logic configuration string adjustments 
         let dStr = days > 0 ? days + "d " : "";
         let hStr = String(hours).padStart(2, '0');
         let mStr = String(minutes).padStart(2, '0');
