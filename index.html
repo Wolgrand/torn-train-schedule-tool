@@ -200,6 +200,33 @@ tr:hover { background: #243249; }
 .timeline-desc {
     font-size: 13px;
 }
+
+/* Next Jump Card Metrics Layout Styling */
+.countdown-grid {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+}
+.countdown-box {
+    background: #111827;
+    padding: 12px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    text-align: center;
+    min-width: 140px;
+}
+.countdown-val {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--warning);
+    font-family: monospace;
+}
+.countdown-lbl {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-top: 2px;
+}
 </style>
 </head>
 
@@ -293,6 +320,20 @@ tr:hover { background: #243249; }
     </div>
 
     <div>
+        <div class="card" style="border-left: 4px solid var(--warning);">
+            <div class="card-title" style="margin-bottom: 8px;">⏰ Next Target Happy Jump Window</div>
+            <div class="countdown-grid">
+                <div>
+                    <div id="targetTimestamp" style="font-size: 15px; font-weight: 600; color: var(--text-main);">Calculating parameters...</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Estimated stack boundary arrival time (Local Time)</div>
+                </div>
+                <div style="margin-left: auto;" class="countdown-box">
+                    <div id="countdownTimer" class="countdown-val">--:--:--</div>
+                    <div class="countdown-lbl">Time Remaining</div>
+                </div>
+            </div>
+        </div>
+
         <div class="card" style="padding: 12px;">
             <div class="card-title" style="padding: 8px 0 0 8px;">7-Day Dynamic Cashflow Schedule</div>
             <div class="table-wrapper">
@@ -368,6 +409,9 @@ tr:hover { background: #243249; }
 </div>
 
 <script>
+let globalJumpTargetTime = null;
+let timerIntervalId = null;
+
 async function fetchTornData() {
     const key = document.getElementById("apiKey").value.trim();
     const statusEl = document.getElementById("apiStatus");
@@ -395,7 +439,6 @@ async function fetchTornData() {
 
         playerMeta.innerHTML = `Connected as: <b>${profileData.name} [${profileData.player_id}]</b>`;
 
-        // FALLBACK UPGRADE: Wrapped the faction block inside a clean catch statement so public keys do not freeze execution
         try {
             const factionResponse = await fetch(`https://api.torn.com/faction/?selections=perks&key=${key}`);
             const factionData = await factionResponse.json();
@@ -413,9 +456,8 @@ async function fetchTornData() {
             statusEl.innerText = "Connected (Full)";
             statusEl.style.background = "#22c55e";
         } catch (e) {
-            console.log("Faction endpoint restricted. Using user-provided manual configurations for perks.");
             statusEl.innerText = "Connected (User Only)";
-            statusEl.style.background = "#3b82f6"; // soft blue tracking state
+            statusEl.style.background = "#3b82f6";
         }
         
         calc();
@@ -441,7 +483,6 @@ function calc() {
     let rehab = +document.getElementById("rehab").value;
     let travelTime = +document.getElementById("travelType").value;
 
-    // Fixed UI text assignments to guarantee they load perfectly even on empty or default table calculations
     const tDvdCount = document.getElementById("tDvdCount");
     const tRehabCost = document.getElementById("tRehabCost");
     const tTravelTime = document.getElementById("tTravelTime");
@@ -460,6 +501,7 @@ function calc() {
     let html = "";
 
     let baseDate = new Date();
+    let computedTargetDate = null;
 
     for (let d = 0; d < 7; d++) {
         let loopDate = new Date(baseDate);
@@ -482,13 +524,17 @@ function calc() {
             let happyPerDVD = 2500 * (1 + (voracity / 100));
             runningHappy = (runningHappy + (dvdsUsed * happyPerDVD)) * 2;
             accumulatedCooldownHours += 4; 
+
+            // Safely anchor the earliest physical date tracking instance to display in our metadata card
+            if (!computedTargetDate) {
+                computedTargetDate = new Date(loopDate);
+                // Set to target evening/execution time frame matching the configuration parameters
+                computedTargetDate.setHours(end - 1, 0, 0, 0); 
+            }
         }
 
-        // PERFECTED MATHEMATICAL EQUATION MATRIX
         let cost = (xanaxTakenThisDay * xCost);
-        
         if (isJumpDay) {
-            // Evaluates total volume volume multiplication properly: (Quantity * Price) + Essentials + Rehab
             cost += (dvdsUsed * dvdCost) + ecstasyCost + refillCost + rehab;
         }
 
@@ -520,6 +566,49 @@ function calc() {
     }
 
     document.getElementById("out").innerHTML = html;
+
+    // Trigger calculation engine update loop to sync countdown cards
+    if (computedTargetDate) {
+        globalJumpTargetTime = computedTargetDate.getTime();
+        document.getElementById("targetTimestamp").innerHTML = computedTargetDate.toLocaleDateString('en-US', { 
+            weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+        });
+        startLiveCountdown();
+    }
+}
+
+function startLiveCountdown() {
+    if (timerIntervalId) clearInterval(timerIntervalId);
+
+    function updateTimer() {
+        if (!globalJumpTargetTime) return;
+        
+        let now = new Date().getTime();
+        let distance = globalJumpTargetTime - now;
+
+        if (distance < 0) {
+            document.getElementById("countdownTimer").innerText = "READY";
+            document.getElementById("countdownTimer").style.color = "var(--accent)";
+            return;
+        }
+
+        let days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        // Format formatting pad logic configuration string adjustments 
+        let dStr = days > 0 ? days + "d " : "";
+        let hStr = String(hours).padStart(2, '0');
+        let mStr = String(minutes).padStart(2, '0');
+        let sStr = String(seconds).padStart(2, '0');
+
+        document.getElementById("countdownTimer").innerText = `${dStr}${hStr}:${mStr}:${sStr}`;
+        document.getElementById("countdownTimer").style.color = "var(--warning)";
+    }
+
+    updateTimer();
+    timerIntervalId = setInterval(updateTimer, 1000);
 }
 
 window.onload = calc;
