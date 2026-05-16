@@ -261,6 +261,16 @@ tr:hover { background: #243249; }
             </div>
 
             <div class="form-group">
+                <label>Ecstasy Cost ($)</label>
+                <input id="xStcCost" type="number" value="60000">
+            </div>
+
+            <div class="form-group">
+                <label>Energy Refill Cost (Points value in $)</label>
+                <input id="refillCost" type="number" value="900000" placeholder="Cost of 25 points">
+            </div>
+
+            <div class="form-group">
                 <label>Faction Voracity Perk (+% Happy)</label>
                 <input id="voracity" type="number" value="10">
             </div>
@@ -320,14 +330,14 @@ tr:hover { background: #243249; }
                     <div class="timeline-desc">
                         <b>Switzerland Flight (Rehab Run):</b> Before starting your eDVD/Ecstasy cycle, check into the airport and fly to Switzerland. 
                         <br>• <b>Flight Duration:</b> <span id="tTravelTime" style="color:var(--info); font-weight:bold;">70 mins</span> outbound. 
-                        <br>• <b>Action:</b> Pay the medical fees (<span id="tRehabCost" style="color:var(--danger); font-weight:bold;">$1,500,000</span> allocation) to scrub your addiction down to 0% so it doesn't degrade your gym training efficiency or risk getting you expelled from Education classes. 
+                        <br>• <b>Action:</b> Pay the medical fees (<span id="tRehabCost" style="color:var(--danger); font-weight:bold;">$1,500,000</span>) to wipe addiction to 0%. 
                         <br>• <b>Return:</b> Fly home immediately (<span id="tTravelTime2" style="color:var(--info); font-weight:bold;">70 mins</span> inbound). 
                     </div>
                 </div>
 
                 <div class="timeline-step">
                     <div class="timeline-time">Hour 0:00</div>
-                    <div class="timeline-desc"><b>Verification Phase:</b> Confirm your landing back in Torn. Verify energy pool is stacked at <span class="pos">1000 E</span>, booster cooldown is at <span class="pos">0:00</span>, and your drug cooldown is completely green.</div>
+                    <div class="timeline-desc"><b>Verification Phase:</b> Confirm landing. Verify energy pool is stacked at <span class="pos">1000 E</span>, booster cooldown is at <span class="pos">0:00</span>, and drug cooldown is clear.</div>
                 </div>
                 <div class="timeline-step active">
                     <div class="timeline-time">Minute xx:01</div>
@@ -335,7 +345,7 @@ tr:hover { background: #243249; }
                 </div>
                 <div class="timeline-step">
                     <div class="timeline-time">Minute xx:02</div>
-                    <div class="timeline-desc"><b>Chemical Multiplier:</b> Take 1x <span class="warn">Ecstasy</span> drug. Your happy bar instantly doubles! <i>Drug cooldown will increment by ~3.5 to 4 hours.</i></div>
+                    <div class="timeline-desc"><b>Chemical Multiplier:</b> Take 1x <span class="warn">Ecstasy</span> drug. Your happy bar instantly doubles! <i>Drug cooldown increments by ~3.5 to 4 hours.</i></div>
                 </div>
                 <div class="timeline-step">
                     <div class="timeline-time">Minute xx:03</div>
@@ -423,11 +433,13 @@ function calc() {
     let end = +document.getElementById("end").value;
     let dvdCost = +document.getElementById("dvdCost").value;
     let dvdMax = +document.getElementById("dvdMax").value;
+    let ecstasyCost = +document.getElementById("xStcCost").value;
+    let refillCost = +document.getElementById("refillCost").value;
     let voracity = +document.getElementById("voracity").value;
     let rehab = +document.getElementById("rehab").value;
     let travelTime = +document.getElementById("travelType").value;
 
-    // Direct text-node mapping to ensure the timeline numbers match inputs
+    // Fixed internal timeline update assignments to prevent execution blocks
     document.getElementById("tDvdCount").innerText = dvdMax;
     document.getElementById("tRehabCost").innerText = "$" + rehab.toLocaleString();
     document.getElementById("tTravelTime").innerText = travelTime + " mins";
@@ -465,10 +477,13 @@ function calc() {
             accumulatedCooldownHours += 4; 
         }
 
-        let cost = (xanaxTakenThisDay * xCost) + (dvdsUsed * dvdCost);
+        // CORRECTED FINANCIAL MATH MATRIX
+        let cost = (xanaxTakenThisDay * xCost);
         
-        // Distribute rehab costs evenly onto the execution days to prevent a raw terminal drop
-        if (d === 6) cost += rehab; 
+        if (isJumpDay) {
+            // Include eDVD total volume cost, ecstasy unit cost, energy refill, and complete rehab allocation
+            cost += (dvdsUsed * dvdCost) + ecstasyCost + refillCost + rehab;
+        }
 
         let net = income - cost;
         totalCash += net;
@@ -486,7 +501,7 @@ function calc() {
             <td class="date-col">${dateString}</td>
             <td>${xanaxTakenThisDay}</td>
             <td style="color: #94a3b8;">${accumulatedCooldownHours} hrs</td>
-            <td>${displayEnergy} E</td>
+            <td>${isJumpDay ? displayEnergy + ' + 150' : displayEnergy} E</td>
             <td>${dvdsUsed}</td>
             <td><span class="pos">${Math.round(runningHappy).toLocaleString()}</span></td>
             <td>${isJumpDay ? "⚡ <span style='color:var(--warning); font-weight:bold;'>JUMP</span>" : "<span style='color:var(--text-muted)'>Stacking</span>"}</td>
