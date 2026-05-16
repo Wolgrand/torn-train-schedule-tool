@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Torn Advanced Planner & API Optimizer</title>
+
+<style>
+:root {
+    --bg-main: #0f172a;
+    --bg-card: #1e293b;
+    --bg-input: #334155;
+    --text-main: #e2e8f0;
+    --text-muted: #94a3b8;
+    --accent: #22c55e;
+    --danger: #ef4444;
+    --warning: #eabc54;
+    --border: #475569;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-main);
+    padding: 24px;
+    margin: 0;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+}
+
+h2 {
+    margin-top: 0;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 12px;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .dashboard { grid-template-columns: 1fr; }
+}
+
+.card {
+    background: var(--bg-card);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    height: fit-content;
+}
+
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-main);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.form-group {
+    margin-bottom: 12px;
+}
+
+label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: #fff;
+    box-sizing: border-box;
+    font-size: 14px;
+}
+
+input:focus, select:focus {
+    outline: 2px solid var(--accent);
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #0f172a;
+    border: none;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s;
+}
+
+.btn-secondary {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    font-weight: 500;
+    font-size: 12px;
+    cursor: pointer;
+    margin-top: 4px;
+}
+
+button:hover { opacity: 0.9; }
+
+.status-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: #475569;
+    color: #fff;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    font-size: 13px;
+    border-collapse: collapse;
+}
+
+th {
+    background: #111827;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    padding: 12px 8px;
+}
+
+td {
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+}
+
+tr:hover { background: #243249; }
+
+.pos { color: var(--accent); font-weight: 500; }
+.neg { color: var(--danger); font-weight: 500; }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h2>Torn Advanced Happy Jump Optimizer</h2>
+
+<div class="dashboard">
+
+    <div>
+        <div class="card" style="margin-bottom: 16px;">
+            <div class="card-title">
+                Torn API Integration
+                <span id="apiStatus" class="status-badge">Disconnected</span>
+            </div>
+            <div class="form-group">
+                <label>API Key (Minimal/Public Access)</label>
+                <input id="apiKey" type="password" placeholder="Enter Torn API Key...">
+            </div>
+            <button class="btn-secondary" onclick="fetchTornData()">Fetch Profile Data</button>
+            <div id="playerMeta" style="font-size: 12px; color: var(--text-muted); margin-top: 8px; text-align: center;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Configuration</div>
+            
+            <div class="form-group">
+                <label>Daily Income ($)</label>
+                <input id="income" type="number" value="4000000">
+            </div>
+            
+            <div class="form-group">
+                <label>Property Base Max Happy</label>
+                <input id="property" type="number" value="5025" placeholder="Auto-fills from API or change manually">
+            </div>
+
+            <div class="form-group">
+                <label>Xanax Cost ($)</label>
+                <input id="xCost" type="number" value="850000">
+            </div>
+
+            <div class="form-group">
+                <label>Active Play Window (Hours/Day)</label>
+                <div style="display: flex; gap: 8px;">
+                    <input id="start" type="number" value="6" placeholder="Start">
+                    <input id="end" type="number" value="24" placeholder="End">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>eDVD Cost ($)</label>
+                <input id="dvdCost" type="number" value="400000">
+            </div>
+
+            <div class="form-group">
+                <label>Max eDVDs used per jump</label>
+                <input id="dvdMax" type="number" value="4">
+            </div>
+
+            <div class="form-group">
+                <label>Faction Voracity Perk (+% Happy)</label>
+                <input id="voracity" type="number" value="10" placeholder="Auto-fills from API">
+            </div>
+
+            <div class="form-group">
+                <label>Weekly Rehab Cost ($)</label>
+                <input id="rehab" type="number" value="1100000">
+            </div>
+
+            <button class="btn-primary" onclick="calc()">Optimize Schedule</button>
+        </div>
+    </div>
+
+    <div class="card" style="padding: 12px;">
+        <div class="card-title" style="padding: 8px 0 0 8px;">Simulated 7-Day Routine</div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Xanax Taken</th>
+                        <th>Current Stacking E</th>
+                        <th>eDVDs Used</th>
+                        <th>Target Happy</th>
+                        <th>Jump Event?</th>
+                        <th>Total Cost</th>
+                        <th>Net Profit</th>
+                        <th>Balance Sheet</th>
+                    </tr>
+                </thead>
+                <tbody id="out"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+</div>
+
+<script>
+// Fetch Live Data from Torn API
+async function fetchTornData() {
+    const key = document.getElementById("apiKey").value.trim();
+    const statusEl = document.getElementById("apiStatus");
+    const playerMeta = document.getElementById("playerMeta");
+
+    if (!key) {
+        alert("Please enter a valid API key first.");
+        return;
+    }
+
+    statusEl.innerText = "Connecting...";
+    statusEl.style.background = varToString('--warning');
+
+    try {
+        // Request profiles (bars/properties for Max Happy) and structure perks via faction
+        const profileResponse = await fetch(`https://api.torn.com/user/?selections=profile,bars&key=${key}`);
+        const profileData = await profileResponse.json();
+
+        if (profileData.error) {
+            throw new Error(profileData.error.error || "Invalid API Key");
+        }
+
+        // 1. Calculate & populate Max Happy
+        if (profileData.happy && profileData.happy.maximum) {
+            document.getElementById("property").value = profileData.happy.maximum;
+        }
+
+        // Display basic player context info
+        playerMeta.innerHTML = `Connected as: <b>${profileData.name} [${profileData.player_id}]</b>`;
+
+        // 2. Safely try parsing faction data to scan for Voracity Perk levels
+        try {
+            const factionResponse = await fetch(`https://api.torn.com/faction/?selections=perks&key=${key}`);
+            const factionData = await factionResponse.json();
+
+            if (factionData.perks) {
+                // Look for the Voracity perk string that maps to candy/booster happy boosts
+                let voracityValue = 0;
+                factionData.perks.forEach(perk => {
+                    if (perk.key && perk.key.toLowerCase().includes("voracity")) {
+                        // Extract numeric value from description or use step increments if found
+                        let match = perk.description.match(/\d+/);
+                        if (match) voracityValue = parseInt(match[0]);
+                    }
+                });
+                document.getElementById("voracity").value = voracityValue;
+            }
+        } catch (e) {
+            console.log("Faction perks data could not be parsed automatically. Defaulting to fallback parameters.");
+        }
+
+        statusEl.innerText = "Connected";
+        statusEl.style.background = "#22c55e"; // soft green
+        
+        // Re-run the optimizer schedule automatically with the new data points
+        calc();
+
+    } catch (err) {
+        statusEl.innerText = "Error";
+        statusEl.style.background = "#ef4444"; // danger red
+        playerMeta.innerHTML = `<span style="color:var(--danger)">${err.message}</span>`;
+    }
+}
+
+// Simple internal helper to access CSS variables safely inside inline JS assignments
+function varToString(varName) {
+    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+// Logic Engine Core
+function calc() {
+    let income = +document.getElementById("income").value;
+    let propertyHappy = +document.getElementById("property").value;
+    let xCost = +document.getElementById("xCost").value;
+    let start = +document.getElementById("start").value;
+    let end = +document.getElementById("end").value;
+    let dvdCost = +document.getElementById("dvdCost").value;
+    let dvdMax = +document.getElementById("dvdMax").value;
+    let voracity = +document.getElementById("voracity").value;
+    let rehab = +document.getElementById("rehab").value;
+
+    let hoursActive = end - start;
+    let cooldown = 6; 
+    let xanaxPerDay = Math.floor(hoursActive / cooldown);
+
+    let totalCash = 0;
+    let currentEnergyStack = 0;
+    let html = "";
+
+    for (let d = 1; d <= 7; d++) {
+        let xanaxTakenThisDay = xanaxPerDay;
+        let energyGainedThisDay = xanaxTakenThisDay * 250;
+        currentEnergyStack += energyGainedThisDay;
+
+        let isJumpDay = false;
+        let dvdsUsed = 0;
+        let runningHappy = propertyHappy;
+
+        if (currentEnergyStack >= 1000 || d === 7) {
+            isJumpDay = true;
+            dvdsUsed = dvdMax;
+            
+            // Core calculations: Base 2500 per eDVD modified by Voracity Perk
+            let happyPerDVD = 2500 * (1 + (voracity / 100));
+            runningHappy += (dvdsUsed * happyPerDVD);
+        }
+
+        let cost = (xanaxTakenThisDay * xCost) + (dvdsUsed * dvdCost);
+        if (d === 7) cost += rehab; 
+
+        let net = income - cost;
+        totalCash += net;
+
+        let displayEnergy = currentEnergyStack;
+        if (isJumpDay) {
+            currentEnergyStack = 0; 
+        }
+
+        let netClass = net >= 0 ? "pos" : "neg";
+        let cashClass = totalCash >= 0 ? "pos" : "neg";
+
+        html += `
+        <tr>
+            <td><b>Day ${d}</b></td>
+            <td>${xanaxTakenThisDay}</td>
+            <td>${displayEnergy} E</td>
+            <td>${dvdsUsed}</td>
+            <td><span class="pos">${Math.round(runningHappy).toLocaleString()}</span></td>
+            <td>${isJumpDay ? "⚡ <span style='color:var(--warning); font-weight:bold;'>JUMP</span>" : "<span style='color:var(--text-muted)'>Stacking</span>"}</td>
+            <td>$${cost.toLocaleString()}</td>
+            <td class="${netClass}">$${net.toLocaleString()}</td>
+            <td class="${cashClass}">$${totalCash.toLocaleString()}</td>
+        </tr>
+        `;
+    }
+
+    document.getElementById("out").innerHTML = html;
+}
+
+window.onload = calc;
+</script>
+
+</body>
+</html>
