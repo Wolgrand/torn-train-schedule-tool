@@ -4,7 +4,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gym Optimizer PRO</title>
+<title>Torn Gym Optimizer</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
@@ -16,64 +16,99 @@
 --accent:#5da8ff;
 --text:#e6e9ef;
 --muted:#9aa4b2;
---success:#4cd964;
 --danger:#ff5d5d;
+--success:#4cd964;
 }
 
 body {
 margin:0;
-font-family:-apple-system;
 background:var(--bg);
 color:var(--text);
+font-family:-apple-system,system-ui;
 display:flex;
 justify-content:center;
 }
 
-.container { max-width:560px; padding:16px; }
-
-h1 { text-align:center; }
-
-input,button {
+.container {
+max-width:520px;
 width:100%;
-padding:12px;
-border:none;
-border-radius:10px;
-margin-bottom:10px;
-background:var(--card);
-color:white;
+padding:16px;
 }
 
-button { background:var(--accent); }
+h1 {
+text-align:center;
+font-size:20px;
+margin-bottom:10px;
+}
 
-.input-group { position:relative; }
+/* INPUT */
+.input-group {
+position:relative;
+}
+
+input {
+width:100%;
+padding:12px;
+border-radius:10px;
+border:none;
+background:var(--card);
+color:white;
+margin-bottom:10px;
+}
 
 .toggle {
 position:absolute;
 right:10px;
 top:50%;
 transform:translateY(-50%);
-cursor:pointer;
 font-size:12px;
+cursor:pointer;
 color:var(--muted);
 }
 
+button {
+width:100%;
+padding:12px;
+border-radius:10px;
+border:none;
+background:var(--accent);
+color:white;
+font-weight:600;
+cursor:pointer;
+}
+
+/* CARD */
 .card {
 background:var(--card);
-padding:14px;
 border-radius:12px;
-margin-top:10px;
+padding:14px;
+margin-top:12px;
 }
 
 .row {
 display:flex;
 justify-content:space-between;
-padding:5px 0;
+padding:6px 0;
 }
 
+/* ERROR */
+.error {
+background:rgba(255,93,93,0.08);
+border:1px solid rgba(255,93,93,0.3);
+padding:10px;
+border-radius:8px;
+margin-top:10px;
+color:var(--danger);
+font-size:13px;
+}
+
+/* TIMELINE */
 .timeline {
 position:relative;
 padding-left:25px;
+margin-top:10px;
 }
+
 .timeline::before {
 content:"";
 position:absolute;
@@ -84,7 +119,11 @@ width:2px;
 background:var(--accent);
 }
 
-.item { margin-bottom:14px; position:relative; }
+.item {
+position:relative;
+margin-bottom:15px;
+}
+
 .dot {
 position:absolute;
 left:-3px;
@@ -95,21 +134,16 @@ border-radius:50%;
 border:2px solid var(--accent);
 }
 
-.content { padding-left:15px; font-size:13px; }
-
-.jump { color:var(--success); }
-.xanax { color:var(--accent); }
-.wait { color:#ffaa00; }
-.waste { color:var(--danger); }
-
-.error {
-background:#ff5d5d20;
-padding:10px;
-border-radius:8px;
-margin-top:10px;
-color:#ff5d5d;
+.content {
+padding-left:15px;
 font-size:13px;
 }
+
+.wait { color:#ffaa00; }
+.xanax { color:var(--accent); }
+.jump { color:var(--success); }
+
+canvas { margin-top:12px; }
 
 </style>
 </head>
@@ -118,15 +152,15 @@ font-size:13px;
 
 <div class="container">
 
-<h1>Gym Optimizer PRO</h1>
+<h1>Gym Optimizer</h1>
 
 <div class="input-group">
 <input id="apiKey" type="password" placeholder="API Key">
 <span class="toggle" onclick="toggleKey()">Show</span>
 </div>
 
-<input id="sleepStart" type="number" value="0">
-<input id="sleepEnd" type="number" value="8">
+<input id="sleepStart" type="number" value="0" min="0" max="23">
+<input id="sleepEnd" type="number" value="8" min="0" max="23">
 
 <button onclick="load()">Optimize</button>
 
@@ -138,10 +172,10 @@ font-size:13px;
 <div class="row"><span>Strategy</span><span id="strategy"></span></div>
 <div class="row"><span>Next Jump</span><span id="jump"></span></div>
 
-<h3>Timeline</h3>
+<h4>Timeline</h4>
 <div id="timeline" class="timeline"></div>
 
-<h3>Chart</h3>
+<h4>Energy Chart</h4>
 <canvas id="chart"></canvas>
 
 </div>
@@ -150,61 +184,88 @@ font-size:13px;
 
 <script>
 
-const MAX=1000, X=250, CD=480*60;
+const MAX = 1000;
+const XANAX = 250;
+const CD = 480 * 60;
+
 let dataStore, chart;
 
-// toggle key
+// toggle API key
 function toggleKey(){
-apiKey.type = apiKey.type==="password" ? "text" : "password";
+apiKey.type = apiKey.type === "password" ? "text" : "password";
 }
 
 // helpers
-function date(t){ return new Date(t).toLocaleTimeString(); }
+function date(t){
+return new Date(t).toLocaleTimeString();
+}
 
 function inSleep(t){
-let h=new Date(t).getHours();
-return h>=sleepStart.value && h<sleepEnd.value;
+let h = new Date(t).getHours();
+return h >= sleepStart.value && h < sleepEnd.value;
 }
 
 function shift(t){
-let d=new Date(t);
+let d = new Date(t);
 d.setHours(sleepEnd.value,0,0,0);
 return d.getTime();
 }
 
-// simulation
+// SAFE ENERGY EXTRACTION
+function getEnergy(d){
+
+if (d.energy && typeof d.energy.current !== "undefined") {
+return {
+current: d.energy.current,
+inc: d.energy.increment,
+int: d.energy.interval
+};
+}
+
+if (d.bars && d.bars.energy) {
+return {
+current: d.bars.energy.current,
+inc: 5,
+int: 600
+};
+}
+
+return null;
+}
+
+// SIMULATION
 function simulate(strategy){
 
-let energy=dataStore.energy;
-let time=Date.now();
-let steps=[], waste=0;
+let energy = dataStore.energy;
+let time = Date.now();
+let steps = [];
 
-while(energy<MAX){
+while(energy < MAX){
 
-let take=true;
+let take = true;
 
-if(strategy!=="aggressive"){
+if(strategy !== "aggressive"){
 
-let bestWait=0, bestWaste=999;
+let bestWait = 0;
+let bestWaste = 999;
 
 for(let i=0;i<=3;i++){
-let future=energy+i*dataStore.inc;
-let raw=future+X;
-let w=Math.max(0,raw-MAX);
+let future = energy + i*dataStore.inc;
+let waste = Math.max(0,(future+XANAX)-MAX);
 
-if(w<bestWaste){
-bestWaste=w;
-bestWait=i;
+if(waste < bestWaste){
+bestWaste = waste;
+bestWait = i;
 }
 }
 
-if(bestWait>0){
-let waitTime=bestWait*dataStore.int*1000;
+if(bestWait > 0){
+let waitTime = bestWait * dataStore.int * 1000;
 
-if(strategy==="efficient" || waitTime<CD*1000){
-take=false;
-time+=waitTime;
-energy+=bestWait*dataStore.inc;
+if(strategy==="efficient" || waitTime < CD*1000){
+take = false;
+time += waitTime;
+energy += bestWait * dataStore.inc;
 
 steps.push({time,type:"wait"});
 continue;
@@ -212,42 +273,69 @@ continue;
 }
 }
 
-// xanax
-if(inSleep(time)) time=shift(time);
+// take xanax
+if(inSleep(time)) time = shift(time);
 
-let raw=energy+X;
-let after=Math.min(MAX,raw);
-let w=Math.max(0,raw-MAX);
+let raw = energy + XANAX;
+energy = Math.min(MAX, raw);
 
-steps.push({time,type:"x",energy:after,waste:w});
+steps.push({time,type:"x",energy});
 
-energy=after;
-waste+=w;
-time+=CD*1000;
+time += CD*1000;
 }
 
-let final=Math.max(time,
+let final = Math.max(
+time,
 Date.now()+dataStore.drug*1000,
-Date.now()+dataStore.booster*1000);
+Date.now()+dataStore.booster*1000
+);
 
-return {steps,final,waste,strategy};
+return {steps, final, strategy};
 }
 
-// calculate
+// CALCULATE
 function calculate(){
-let res=["aggressive","balanced","efficient"].map(simulate);
-res.sort((a,b)=>a.final-b.final || a.waste-b.waste);
-return res;
+let r = ["aggressive","balanced","efficient"].map(simulate);
+r.sort((a,b)=>a.final-b.final);
+return r;
 }
+
+// RENDER
+function render(){
+
+let res = calculate();
+let best = res[0];
+
+energy.textContent = dataStore.energy;
+strategy.textContent = best.strategy;
+jump.textContent = date(best.final);
+
+// timeline
+let html="";
+
+best.steps.forEach(s=>{
+html+=`
+<div class="item">
+<div class="dot"></div>
+<div class="content">
+<b>${date(s.time)}</b>
+<div class="${s.type==="x"?"xanax":"wait"}">
+${s.type==="x"?"💊 Xanax":"⏳ Wait"}
+</div>
+</div>
+</div>
+`;
+});
+
+timeline.innerHTML = html;
 
 // chart
-function draw(res){
-
-let datasets=res.map(r=>{
+let datasets = res.map(r=>{
 let data=[];
-let energy=dataStore.energy, t=Date.now();
+let e=dataStore.energy;
+let t=Date.now();
 
-data.push({x:t,y:energy});
+data.push({x:t,y:e});
 
 r.steps.forEach(s=>{
 if(s.energy) data.push({x:s.time,y:s.energy});
@@ -256,15 +344,13 @@ if(s.energy) data.push({x:s.time,y:s.energy});
 return {
 label:r.strategy,
 data,
-borderWidth:r.strategy==="efficient"?3:1,
-borderColor:r.strategy==="aggressive"?"#ff5d5d":r.strategy==="balanced"?"#ffaa00":"#4cd964",
-tension:0.3
+borderWidth: r===best ? 3 : 1
 };
 });
 
 if(chart) chart.destroy();
 
-chart=new Chart(chart,{
+chart = new Chart(chart,{
 type:"line",
 data:{datasets},
 options:{
@@ -273,11 +359,6 @@ plugins:{
 zoom:{
 zoom:{wheel:{enabled:true},mode:"x"},
 pan:{enabled:true,mode:"x"}
-},
-tooltip:{
-callbacks:{
-label:(ctx)=>`Energy: ${ctx.parsed.y}`
-}
 }
 },
 scales:{
@@ -288,71 +369,43 @@ y:{min:0,max:1000}
 });
 }
 
-// UI
-function render(){
-
-let res=calculate();
-let best=res[0];
-
-energy.textContent=dataStore.energy;
-strategy.textContent=best.strategy;
-jump.textContent=date(best.final);
-
-// timeline
-let html="";
-best.steps.forEach(s=>{
-html+=`<div class="item"><div class="dot"></div><div class="content">
-<b>${date(s.time)}</b>
-<div class="${s.type==="x"?"xanax":"wait"}">${s.type==="x"?"💊 Xanax":"⏳ Wait"}</div>
-${s.waste?`<div class="waste">⚠ ${s.waste}</div>`:""}
-</div></div>`;
-});
-timeline.innerHTML=html;
-
-draw(res);
-}
-
-// FIXED LOAD (VERY IMPORTANT)
+// LOAD (FIXED)
 async function load(){
 
 errorBox.style.display="none";
 
-let key=apiKey.value.trim();
+let key = apiKey.value.trim();
 if(!key){
 errorBox.innerText="API key required";
 errorBox.style.display="block";
 return;
 }
 
-let res=await fetch(`https://api.torn.com/user/?selections=cooldowns,energy&key=${key}`);
-let d=await res.json();
+let res = await fetch(`https://api.torn.com/user/?selections=cooldowns,energy&key=${key}`);
+let d = await res.json();
 
-// ✅ BULLETPROOF CHECKS
+// ✅ HANDLE ERRORS SAFELY
 if(d.error){
-errorBox.innerText="API error: "+d.error.error;
+errorBox.innerText = d.error.error;
 errorBox.style.display="block";
 return;
 }
 
-if(!d.cooldowns){
-errorBox.innerText="Missing cooldowns permission";
+let energyObj = getEnergy(d);
+
+if(!energyObj){
+errorBox.innerText="Energy data not available (check API permissions)";
 errorBox.style.display="block";
 return;
 }
 
-if(!d.energy || typeof d.energy.current==="undefined"){
-errorBox.innerText="Energy data missing (check API permissions)";
-errorBox.style.display="block";
-return;
-}
-
-// ✅ SAFE ASSIGNMENT
-dataStore={
-energy:d.energy.current,
-drug:d.cooldowns.drug||0,
-booster:d.cooldowns.booster||0,
-inc:d.energy.increment||5,
-int:d.energy.interval||600
+// ✅ FINAL SAFE ASSIGNMENT
+dataStore = {
+energy: energyObj.current,
+inc: energyObj.inc,
+int: energyObj.int,
+drug: d.cooldowns?.drug || 0,
+booster: d.cooldowns?.booster || 0
 };
 
 card.style.display="block";
