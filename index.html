@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Torn Gym Planner</title>
+
+<link rel="manifest" href="manifest.json">
+
+<style>
+:root {
+--bg:#0f1115;
+--card:#1a1f2b;
+--accent:#5da8ff;
+--text:#e6e9ef;
+--muted:#9aa4b2;
+--success:#4cd964;
+--danger:#ff5d5d;
+}
+
+body {
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+background:var(--bg);
+color:var(--text);
+display:flex;
+justify-content:center;
+}
+
+.container {
+width:100%;
+max-width:420px;
+padding:16px;
+}
+
+h1 {text-align:center;}
+
+input,button {
+width:100%;
+padding:12px;
+border-radius:10px;
+border:none;
+margin-bottom:10px;
+background:var(--card);
+color:white;
+}
+
+button {
+background:var(--accent);
+font-weight:600;
+cursor:pointer;
+}
+
+.card {
+background:var(--card);
+padding:16px;
+border-radius:12px;
+margin-top:10px;
+}
+
+.item {
+display:flex;
+justify-content:space-between;
+padding:8px 0;
+}
+
+.big {
+text-align:center;
+margin-top:10px;
+font-weight:600;
+}
+
+.ready {color:var(--success);}
+.notready {color:var(--danger);}
+
+.section {
+margin-top:15px;
+font-size:13px;
+color:var(--muted);
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>Gym Planner</h1>
+
+<input id="apiKey" type="password" placeholder="Torn API Key">
+<button onclick="load()">Sync</button>
+
+<div id="card" class="card" style="display:none">
+
+<div class="item"><span>Energy</span><span id="energy"></span></div>
+<div class="item"><span>Drug CD</span><span id="drug"></span></div>
+<div class="item"><span>Booster CD</span><span id="booster"></span></div>
+<div class="item"><span>Xanax Needed</span><span id="xanax"></span></div>
+
+<div class="item"><span>Status</span><span id="status"></span></div>
+
+<div class="big" id="nextJump"></div>
+<div class="big" id="countdown"></div>
+
+<div class="section" id="timeline"></div>
+
+</div>
+
+</div>
+
+<script>
+const XANAX_ENERGY = 250;
+const MAX_ENERGY = 1000;
+const XANAX_CD = 480 * 60;
+
+const SLEEP_START = 0;
+const SLEEP_END = 8;
+
+let dataStore = {};
+let timer;
+
+// helpers
+function fmt(sec){
+if(sec<=0) return "Ready";
+let h=Math.floor(sec/3600);
+let m=Math.floor((sec%3600)/60);
+let s=sec%60;
+return `${h}h ${m}m ${s}s`;
+}
+function date(ts){ return new Date(ts).toLocaleString(); }
+function inSleep(ts){
+let h=new Date(ts).getHours();
+return (h>=SLEEP_START && h<SLEEP_END);
+}
+function shiftToWake(ts){
+let d=new Date(ts);
+if(inSleep(ts)) d.setHours(SLEEP_END,0,0,0);
+return d.getTime();
+}
+
+// notifications
+function notify(msg){
+if(Notification.permission==="granted"){
+new Notification("Torn Planner",{body:msg});
+}
+}
+async function requestNotif(){
+if(Notification.permission!=="granted"){
+await Notification.requestPermission();
+}
+}
+
+// core logic
+function calculate(){
+
+let now=Date.now();
+let energy=dataStore.energy;
+
+let need=Math.max(0,MAX_ENERGY-energy);
+let xanax=Math.ceil(need/250);
+
+let steps=[];
+let currentEnergy=energy;
+let nextTime=now;
+
+for(let i=0;i<xanax;i++){
+
+if(inSleep(nextTime)){
+nextTime=shiftToWake(nextTime);
+}
+
+let before=currentEnergy;
+let raw=before+250;
+let after=Math.min(MAX_ENERGY,raw);
+let waste=Math.max(0,raw-MAX_ENERGY);
+
+steps.push({time:nextTime,before,after,waste});
+
+currentEnergy=after;
+nextTime+=XANAX_CD*1000;
+}
+
+let cdFinish=now+Math.max(dataStore.drug,dataStore.booster)*1000;
+let lastDose=steps.length?steps.at(-1).time:now;
+
+let final=Math.max(cdFinish,lastDose);
+
+let ready=(energy>=1000 && dataStore.drug<=0 && dataStore.booster<=0);
+
+return {steps,xanax,final,ready};
+}
+
+// UI
+function updateUI(){
+
+let calc=calculate();
+
+energy.textContent=dataStore.energy;
+drug.textContent=fmt(dataStore.drug);
+booster.textContent=fmt(dataStore.booster);
+xanax.textContent=calc.xanax;
+
+status.textContent=calc.ready?"READY ✅":"WAIT ❌";
+status.className=calc.ready?"ready":"notready";
+
+nextJump.textContent=calc.ready?"JUMP NOW!":"Next Jump: "+date(calc.final);
+
+let diff=Math.floor((calc.final-Date.now())/1000);
+countdown.textContent="Countdown: "+fmt(diff);
+
+// timeline
+let html="<b>Xanax Plan:</b><br>";
+
+calc.steps.forEach((s,i)=>{
+
+let waste=s.waste>0
+?` <span style="color:#ff5d5d">(+${s.waste} wasted ⚠️)</span>`
+:"";
+
+let sleep=inSleep(s.time)?" 🌙 delayed":"";
+
+html+=`${i+1}️⃣ ${date(s.time)}${sleep}<br>${s.before} → ${s.after}${waste}<br><br>`;
+
+});
+
+timeline.innerHTML=html;
+
+// notify next
+if(calc.steps.length){
+let next=calc.steps[0];
+if(Math.abs(Date.now()-next.time)<1500){
+notify("Time to take Xanax 💊");
+}
+}
+}
+
+// live loop
+function start(){
+clearInterval(timer);
+timer=setInterval(()=>{
+if(dataStore.drug>0) dataStore.drug--;
+if(dataStore.booster>0) dataStore.booster--;
+updateUI();
+},1000);
+}
+
+// load API
+async function load(){
+await requestNotif();
+
+let key=apiKey.value.trim();
+if(!key){ alert("API key required"); return; }
+
+let res=await fetch(`https://api.torn.com/user/?selections=cooldowns,bars&key=${key}`);
+let d=await res.json();
+
+dataStore={
+energy:d.bars.energy.current,
+drug:d.cooldowns.drug,
+booster:d.cooldowns.booster
+};
+
+card.style.display="block";
+updateUI();
+start();
+}
+
+// PWA
+if('serviceWorker' in navigator){
+navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>
