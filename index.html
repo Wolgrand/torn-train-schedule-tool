@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Torn Gym Planner</title>
 
-<link rel="manifest" href="manifest.json">
-
 <style>
 :root {
 --bg:#0f1115;
@@ -77,6 +75,7 @@ font-weight:600;
 margin-top:15px;
 font-size:13px;
 color:var(--muted);
+line-height:1.4em;
 }
 </style>
 </head>
@@ -118,7 +117,7 @@ const SLEEP_END = 8;
 let dataStore = {};
 let timer;
 
-// helpers
+// ===== HELPERS =====
 function fmt(sec){
 if(sec<=0) return "Ready";
 let h=Math.floor(sec/3600);
@@ -126,37 +125,43 @@ let m=Math.floor((sec%3600)/60);
 let s=sec%60;
 return `${h}h ${m}m ${s}s`;
 }
-function date(ts){ return new Date(ts).toLocaleString(); }
+
+function date(ts){
+return new Date(ts).toLocaleString();
+}
+
 function inSleep(ts){
 let h=new Date(ts).getHours();
 return (h>=SLEEP_START && h<SLEEP_END);
 }
+
 function shiftToWake(ts){
 let d=new Date(ts);
 if(inSleep(ts)) d.setHours(SLEEP_END,0,0,0);
 return d.getTime();
 }
 
-// notifications
+// ===== NOTIFICATIONS =====
 function notify(msg){
 if(Notification.permission==="granted"){
 new Notification("Torn Planner",{body:msg});
 }
 }
+
 async function requestNotif(){
 if(Notification.permission!=="granted"){
 await Notification.requestPermission();
 }
 }
 
-// core logic
+// ===== CORE CALC =====
 function calculate(){
 
 let now=Date.now();
 let energy=dataStore.energy;
 
 let need=Math.max(0,MAX_ENERGY-energy);
-let xanax=Math.ceil(need/250);
+let xanax=Math.ceil(need / XANAX_ENERGY);
 
 let steps=[];
 let currentEnergy=energy;
@@ -169,7 +174,7 @@ nextTime=shiftToWake(nextTime);
 }
 
 let before=currentEnergy;
-let raw=before+250;
+let raw=before+XANAX_ENERGY;
 let after=Math.min(MAX_ENERGY,raw);
 let waste=Math.max(0,raw-MAX_ENERGY);
 
@@ -181,15 +186,14 @@ nextTime+=XANAX_CD*1000;
 
 let cdFinish=now+Math.max(dataStore.drug,dataStore.booster)*1000;
 let lastDose=steps.length?steps.at(-1).time:now;
-
 let final=Math.max(cdFinish,lastDose);
 
-let ready=(energy>=1000 && dataStore.drug<=0 && dataStore.booster<=0);
+let ready=(energy>=MAX_ENERGY && dataStore.drug<=0 && dataStore.booster<=0);
 
 return {steps,xanax,final,ready};
 }
 
-// UI
+// ===== UI =====
 function updateUI(){
 
 let calc=calculate();
@@ -224,7 +228,7 @@ html+=`${i+1}️⃣ ${date(s.time)}${sleep}<br>${s.before} → ${s.after}${waste
 
 timeline.innerHTML=html;
 
-// notify next
+// notification trigger
 if(calc.steps.length){
 let next=calc.steps[0];
 if(Math.abs(Date.now()-next.time)<1500){
@@ -233,41 +237,82 @@ notify("Time to take Xanax 💊");
 }
 }
 
-// live loop
+// ===== LIVE LOOP =====
 function start(){
+
 clearInterval(timer);
+
 timer=setInterval(()=>{
+
 if(dataStore.drug>0) dataStore.drug--;
 if(dataStore.booster>0) dataStore.booster--;
+
+// ✅ ENERGY REGEN (REAL API BASED)
+dataStore.tick--;
+
+if (dataStore.tick <= 0) {
+dataStore.energy += dataStore.increment;
+dataStore.tick = dataStore.interval;
+
+if (dataStore.energy > MAX_ENERGY) {
+dataStore.energy = MAX_ENERGY;
+}
+}
+
 updateUI();
+
 },1000);
 }
 
-// load API
+// ===== API LOAD =====
 async function load(){
+
 await requestNotif();
 
 let key=apiKey.value.trim();
-if(!key){ alert("API key required"); return; }
 
-let res=await fetch(`https://api.torn.com/user/?selections=cooldowns,bars&key=${key}`);
-let d=await res.json();
+if(!key){
+alert("API key required");
+return;
+}
 
-dataStore={
-energy:d.bars.energy.current,
-drug:d.cooldowns.drug,
-booster:d.cooldowns.booster
+try{
+
+const res = await fetch(`https://api.torn.com/user/?selections=cooldowns,bars&key=${key}`);
+const d = await res.json();
+
+console.log("API:", d);
+
+if(!d.cooldowns || !d.energy){
+alert("API key missing required permissions (cooldowns, bars)");
+return;
+}
+
+dataStore = {
+energy: d.energy.current,
+drug: d.cooldowns.drug,
+booster: d.cooldowns.booster,
+increment: d.energy.increment,
+interval: d.energy.interval,
+tick: d.energy.ticktime
 };
 
 card.style.display="block";
+
 updateUI();
 start();
+
+}catch(e){
+alert("API error");
+console.error(e);
+}
 }
 
-// PWA
+// ===== SERVICE WORKER =====
 if('serviceWorker' in navigator){
 navigator.serviceWorker.register('sw.js');
 }
+
 </script>
 </body>
 </html>
