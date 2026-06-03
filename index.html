@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Torn Gym Optimizer</title>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 :root {
 --bg:#0f1115;
@@ -18,7 +20,7 @@
 
 body {
 margin:0;
-font-family:-apple-system,system-ui;
+font-family:-apple-system;
 background:var(--bg);
 color:var(--text);
 display:flex;
@@ -26,32 +28,26 @@ justify-content:center;
 }
 
 .container {
-width:100%;
 max-width:520px;
-padding:18px;
-}
-
-/* HEADER */
-h1 {
-text-align:center;
-font-size:22px;
-margin-bottom:10px;
-}
-
-/* INPUT */
-.input-group {
-position:relative;
-}
-
-input {
 width:100%;
-padding:12px;
-border-radius:10px;
+padding:16px;
+}
+
+h1 { text-align:center; }
+
+input, button {
+width:100%;
+padding:10px;
 border:none;
+border-radius:10px;
+margin-bottom:8px;
 background:var(--card);
 color:white;
-margin-bottom:10px;
 }
+
+button { background:var(--accent); cursor:pointer; }
+
+.input-group { position:relative; }
 
 .toggle {
 position:absolute;
@@ -59,59 +55,32 @@ right:12px;
 top:50%;
 transform:translateY(-50%);
 font-size:12px;
+cursor:pointer;
 color:var(--muted);
-cursor:pointer;
 }
 
-button {
-width:100%;
-padding:12px;
-border-radius:10px;
-border:none;
-background:var(--accent);
-color:white;
-font-weight:600;
-cursor:pointer;
-}
-
-/* CARD */
 .card {
 background:var(--card);
-border-radius:14px;
-padding:16px;
-margin-top:14px;
-}
-
-/* ROW */
-.row {
-display:flex;
-justify-content:space-between;
-padding:6px 0;
-}
-
-/* SECTION */
-.section {
-margin-top:16px;
-}
-
-/* CALENDAR */
-.event {
-background:#222;
-padding:8px;
-border-radius:8px;
-margin-bottom:6px;
-font-size:13px;
-}
-
-/* TIMELINE */
-.timeline {
-position:relative;
-padding-left:28px;
+padding:14px;
+border-radius:12px;
 margin-top:10px;
 }
 
+.row {
+display:flex;
+justify-content:space-between;
+padding:5px 0;
+}
+
+.section { margin-top:12px; }
+
+.timeline {
+position:relative;
+padding-left:25px;
+}
+
 .timeline::before {
-content:'';
+content:"";
 position:absolute;
 left:10px;
 top:0;
@@ -120,31 +89,26 @@ width:2px;
 background:var(--accent);
 }
 
-.item {
-margin-bottom:18px;
-position:relative;
-}
+.item { margin-bottom:15px; position:relative; }
 
 .dot {
 position:absolute;
-left:-4px;
-top:4px;
-width:14px;
-height:14px;
+left:-3px;
+top:3px;
+width:12px;
+height:12px;
 border-radius:50%;
 border:2px solid var(--accent);
 background:var(--bg);
 }
 
-.content {
-font-size:13px;
-padding-left:14px;
-}
+.content { padding-left:14px; font-size:13px; }
 
-.jump {color:var(--success); font-weight:600;}
-.xanax {color:var(--accent);}
-.waste {color:var(--danger); font-size:12px;}
-.strategy {color:var(--muted); font-size:12px; text-align:right;}
+.jump { color:var(--success); }
+.xanax { color:var(--accent); }
+.waste { color:var(--danger); font-size:12px; }
+
+canvas { margin-top:10px; }
 
 </style>
 </head>
@@ -156,37 +120,26 @@ padding-left:14px;
 <h1>Gym Optimizer</h1>
 
 <div class="input-group">
-<input id="apiKey" type="password" placeholder="Torn API Key">
+<input id="apiKey" type="password" placeholder="API Key">
 <span class="toggle" onclick="toggleKey()">Show</span>
 </div>
 
-<input id="sleepStart" type="number" value="0" min="0" max="23" placeholder="Sleep start">
-<input id="sleepEnd" type="number" value="8" min="0" max="23" placeholder="Wake hour">
+<input id="sleepStart" type="number" value="0">
+<input id="sleepEnd" type="number" value="8">
 
 <button onclick="load()">Optimize</button>
 
 <div id="card" class="card" style="display:none">
 
 <div class="row"><span>Energy</span><span id="energy"></span></div>
-
-<div class="section">
-<div class="row"><span>Drug Ready</span><span id="drugCd"></span></div>
-<div class="row"><span>Booster Ready</span><span id="boosterCd"></span></div>
-<div class="row"><span>Energy Ready</span><span id="energyReady"></span></div>
 <div class="row"><span>Final Jump</span><span id="finalJump"></span></div>
-</div>
+<div class="row"><span>Strategy</span><span id="strategy"></span></div>
 
-<div class="strategy" id="strategy"></div>
-
-<div class="section">
-<b>Scheduler</b>
-<div id="calendar"></div>
-</div>
-
-<div class="section">
-<b>Timeline</b>
+<div class="section"><b>Timeline</b></div>
 <div id="timeline" class="timeline"></div>
-</div>
+
+<div class="section"><b>Energy vs Time</b></div>
+<canvas id="chart"></canvas>
 
 </div>
 
@@ -199,168 +152,186 @@ const MAX_ENERGY = 1000;
 const XANAX_CD = 480 * 60;
 
 let dataStore;
-let timer;
+let chart;
 
-// toggle API key visibility
+// toggle key
 function toggleKey(){
-let input = document.getElementById("apiKey");
-let toggle = document.querySelector(".toggle");
-
-if(input.type === "password"){
-input.type = "text";
-toggle.textContent = "Hide";
-}else{
-input.type = "password";
-toggle.textContent = "Show";
-}
+let k=apiKey;
+k.type = k.type === "password" ? "text" : "password";
 }
 
 // helpers
-function date(ts){ return new Date(ts).toLocaleString(); }
+function date(ts){ return new Date(ts).toLocaleTimeString(); }
 
 function inSleep(ts){
-let h = new Date(ts).getHours();
-return h >= sleepStart.value && h < sleepEnd.value;
+let h=new Date(ts).getHours();
+return h>=sleepStart.value && h<sleepEnd.value;
 }
 
 function shift(ts){
-let d = new Date(ts);
+let d=new Date(ts);
 d.setHours(sleepEnd.value,0,0,0);
 return d.getTime();
 }
 
-// ===== SIMULATION ENGINE =====
+// simulate
 function simulate(strategy){
 
-let now = Date.now();
-let currentEnergy = dataStore.energy;
-let currentTime = now;
-
+let now=Date.now();
+let energy=dataStore.energy;
+let time=now;
 let steps=[];
 let waste=0;
 
-while(currentEnergy < MAX_ENERGY){
+while(energy<MAX_ENERGY){
 
-let takeNow = true;
+let take=true;
 
-if(strategy !== "aggressive"){
+if(strategy!=="aggressive"){
 
 let bestWait=0;
-let bestWaste=9999;
+let bestWaste=999;
 
 for(let i=0;i<=3;i++){
-let futureEnergy = currentEnergy + (i * dataStore.increment);
-let raw = futureEnergy + 250;
-let w = Math.max(0, raw - 1000);
+let future=energy+(i*dataStore.increment);
+let raw=future+250;
+let w=Math.max(0,raw-1000);
 
-if(w < bestWaste){
-bestWaste = w;
-bestWait = i;
+if(w<bestWaste){
+bestWaste=w;
+bestWait=i;
 }
 }
 
-if(bestWait > 0){
+if(bestWait>0){
+let waitTime=bestWait*dataStore.interval*1000;
 
-let waitTime = bestWait * dataStore.interval * 1000;
-
-if(strategy === "efficient" || waitTime < XANAX_CD*1000){
-takeNow = false;
-
-currentTime += waitTime;
-currentEnergy += bestWait * dataStore.increment;
+if(strategy==="efficient" || waitTime < XANAX_CD*1000){
+take=false;
+time+=waitTime;
+energy+=bestWait*dataStore.increment;
 continue;
 }
 }
 }
 
-// take xanax
-if(inSleep(currentTime)){
-currentTime = shift(currentTime);
+if(inSleep(time)) time=shift(time);
+
+let raw=energy+250;
+let after=Math.min(1000,raw);
+let w=Math.max(0,raw-1000);
+
+steps.push({time,energy:after,waste:w});
+waste+=w;
+
+energy=after;
+time+=XANAX_CD*1000;
 }
 
-let raw = currentEnergy + 250;
-let after = Math.min(1000, raw);
-let w = Math.max(0, raw - 1000);
+let final=Math.max(time,
+Date.now()+dataStore.drug*1000,
+Date.now()+dataStore.booster*1000);
 
-steps.push({
-time: currentTime,
-before: currentEnergy,
-after,
-waste: w
+return {steps, final, waste, strategy};
+}
+
+// optimizer
+function calculateAll(){
+return ["aggressive","balanced","efficient"].map(simulate);
+}
+
+// chart
+function drawChart(results){
+
+let datasets=[];
+
+// generate curves
+results.forEach(r=>{
+
+let data=[];
+let energy=dataStore.energy;
+let time=Date.now();
+
+data.push({x:time,y:energy});
+
+r.steps.forEach(s=>{
+data.push({x:s.time,y:s.energy});
 });
 
-waste += w;
-currentEnergy = after;
-currentTime += XANAX_CD * 1000;
-}
-
-let energyReady = steps.length ? steps.at(-1).time : now;
-let final = Math.max(
-energyReady,
-now + dataStore.drug*1000,
-now + dataStore.booster*1000
-);
-
-return {steps, final, energyReady, waste, strategy};
-}
-
-// ===== OPTIMIZER =====
-function calculate(){
-
-let strategies = ["aggressive","balanced","efficient"];
-
-let results = strategies.map(simulate);
-
-results.sort((a,b)=>{
-if(a.final !== b.final) return a.final - b.final;
-if(a.waste !== b.waste) return a.waste - b.waste;
-return a.steps.length - b.steps.length;
+datasets.push({
+label:r.strategy,
+data,
+borderWidth: r.strategy==="efficient"?3:1,
+borderColor:
+r.strategy==="aggressive"?"#ff5d5d":
+r.strategy==="balanced"?"#ffaa00":"#4cd964",
+tension:0.3
+});
 });
 
-let best = results[0];
+// sleep zones plugin
+const sleepPlugin = {
+id:'sleepZones',
+beforeDraw(chart){
 
-best.drugReady = Date.now() + dataStore.drug*1000;
-best.boosterReady = Date.now() + dataStore.booster*1000;
+let ctx=chart.ctx;
+let xScale=chart.scales.x;
 
-return best;
+for(let i=0;i<48;i++){
+
+let t1=Date.now()+i*3600000;
+let t2=t1+3600000;
+
+if(inSleep(t1)){
+let x1=xScale.getPixelForValue(t1);
+let x2=xScale.getPixelForValue(t2);
+
+ctx.fillStyle="rgba(255,255,255,0.03)";
+ctx.fillRect(x1,0,x2-x1,chart.height);
+}
+}
+}
+};
+
+if(chart) chart.destroy();
+
+chart=new Chart(document.getElementById("chart"),{
+type:"line",
+data:{datasets},
+options:{
+parsing:false,
+scales:{
+x:{type:"time", ticks:{color:"#9aa4b2"}},
+y:{min:0,max:1000, ticks:{color:"#9aa4b2"}}
+},
+plugins:{legend:{labels:{color:"#9aa4b2"}}}
+},
+plugins:[sleepPlugin]
+});
 }
 
-// ===== UI =====
+// UI
 function render(){
 
-let calc = calculate();
+let results=calculateAll();
+results.sort((a,b)=>a.final-b.final || a.waste-b.waste);
 
-energy.textContent = dataStore.energy;
-drugCd.textContent = date(calc.drugReady);
-boosterCd.textContent = date(calc.boosterReady);
-energyReady.textContent = date(calc.energyReady);
-finalJump.textContent = date(calc.final);
-strategy.textContent = "Strategy: " + calc.strategy;
+let best=results[0];
 
-// CALENDAR
-let calHTML="";
-let base = calc.final;
+energy.textContent=dataStore.energy;
+finalJump.textContent=date(best.final);
+strategy.textContent=best.strategy;
 
-for(let i=0;i<3;i++){
-calHTML += `<div class="event">🏋️ Jump ${i+1}: ${date(base)}</div>`;
-calc.steps.forEach(s=>{
-calHTML += `<div class="event">💊 ${date(s.time)}</div>`;
-});
-base += 86400000;
-}
-
-calendar.innerHTML = calHTML;
-
-// TIMELINE
+// timeline
 let events=[];
 
-calc.steps.forEach((s,i)=>{
-events.push({time:s.time,type:"x",text:`💊 Xanax ${i+1}`,waste:s.waste});
+best.steps.forEach((s,i)=>{
+events.push({time:s.time,text:`💊 Xanax ${i+1}`,w:s.waste});
 });
 
-let jt=calc.final;
+let jt=best.final;
 for(let i=0;i<3;i++){
-events.push({time:jt,type:"j",text:`Jump ${i+1}`});
+events.push({time:jt,text:`🏋️ Jump ${i+1}`});
 jt+=86400000;
 }
 
@@ -373,48 +344,38 @@ html+=`
 <div class="dot"></div>
 <div class="content">
 <b>${date(e.time)}</b>
-<div class="${e.type==='j'?'jump':'xanax'}">${e.text}</div>
-${e.waste>0?`<div class="waste">⚠️ Waste ${e.waste}</div>`:""}
+<div>${e.text}</div>
+${e.w>0?`<div class="waste">⚠️ ${e.w}</div>`:""}
 </div>
 </div>`;
 });
 
-timeline.innerHTML = html;
+timeline.innerHTML=html;
 
-}
-
-// loop
-function start(){
-clearInterval(timer);
-timer=setInterval(()=>{
-if(dataStore.drug>0) dataStore.drug--;
-if(dataStore.booster>0) dataStore.booster--;
-render();
-},1000);
+// chart
+drawChart(results);
 }
 
 // load
 async function load(){
 
-let key = apiKey.value.trim();
-if(!key){ alert("API key required"); return; }
+let key=apiKey.value;
 
-let res = await fetch(`https://api.torn.com/user/?selections=cooldowns,energy&key=${key}`);
-let d = await res.json();
+let res=await fetch(`https://api.torn.com/user/?selections=cooldowns,energy&key=${key}`);
+let d=await res.json();
 
-dataStore = {
-energy: d.energy.current,
-drug: d.cooldowns.drug,
-booster: d.cooldowns.booster,
-increment: d.energy.increment,
-interval: d.energy.interval
+dataStore={
+energy:d.energy.current,
+drug:d.cooldowns.drug,
+booster:d.cooldowns.booster,
+increment:d.energy.increment,
+interval:d.energy.interval
 };
 
 card.style.display="block";
-
 render();
-start();
 }
+
 </script>
 
 </body>
