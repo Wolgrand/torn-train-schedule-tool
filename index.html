@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Torn Gym Planner</title>
+<title>Torn Gym Optimizer</title>
 
 <style>
 :root {
@@ -18,83 +18,117 @@
 
 body {
 margin:0;
-font-family:-apple-system;
+font-family:-apple-system,system-ui;
 background:var(--bg);
 color:var(--text);
 display:flex;
 justify-content:center;
 }
 
-.container { max-width:520px; width:100%; padding:16px; }
-
-/* inputs */
-input,button {
+.container {
 width:100%;
-padding:10px;
-margin-bottom:8px;
-border:none;
-border-radius:10px;
-background:var(--card);
-color:white;
+max-width:520px;
+padding:18px;
 }
-button { background:var(--accent); cursor:pointer; }
 
-/* card */
-.card {
-background:var(--card);
+/* HEADER */
+h1 {
+text-align:center;
+font-size:22px;
+margin-bottom:10px;
+}
+
+/* INPUT */
+.input-group {
+position:relative;
+}
+
+input {
+width:100%;
 padding:12px;
 border-radius:10px;
-margin-top:10px;
+border:none;
+background:var(--card);
+color:white;
+margin-bottom:10px;
 }
 
-.item {
+.toggle {
+position:absolute;
+right:12px;
+top:50%;
+transform:translateY(-50%);
+font-size:12px;
+color:var(--muted);
+cursor:pointer;
+}
+
+button {
+width:100%;
+padding:12px;
+border-radius:10px;
+border:none;
+background:var(--accent);
+color:white;
+font-weight:600;
+cursor:pointer;
+}
+
+/* CARD */
+.card {
+background:var(--card);
+border-radius:14px;
+padding:16px;
+margin-top:14px;
+}
+
+/* ROW */
+.row {
 display:flex;
 justify-content:space-between;
 padding:6px 0;
 }
 
+/* SECTION */
 .section {
-margin-top:12px;
-font-size:13px;
-color:var(--muted);
+margin-top:16px;
 }
 
-h4 { margin:12px 0 6px 0; }
-
-/* calendar */
-.calendar-item {
+/* CALENDAR */
+.event {
 background:#222;
 padding:8px;
-margin:4px 0;
-border-radius:6px;
+border-radius:8px;
+margin-bottom:6px;
+font-size:13px;
 }
 
-/* timeline */
+/* TIMELINE */
 .timeline {
 position:relative;
-padding-left:30px;
+padding-left:28px;
 margin-top:10px;
 }
 
 .timeline::before {
-content:"";
+content:'';
 position:absolute;
-left:12px;
+left:10px;
 top:0;
 bottom:0;
 width:2px;
 background:var(--accent);
 }
 
-.timeline-item {
+.item {
+margin-bottom:18px;
 position:relative;
-margin-bottom:16px;
 }
 
-.timeline-dot {
+.dot {
 position:absolute;
 left:-4px;
-top:2px;
+top:4px;
 width:14px;
 height:14px;
 border-radius:50%;
@@ -102,49 +136,57 @@ border:2px solid var(--accent);
 background:var(--bg);
 }
 
-.timeline-content {
-padding-left:15px;
+.content {
 font-size:13px;
+padding-left:14px;
 }
 
-.jump { color:var(--success); font-weight:600; }
-.xanax { color:var(--accent); }
-.waste { color:var(--danger); font-size:12px; }
-</style>
+.jump {color:var(--success); font-weight:600;}
+.xanax {color:var(--accent);}
+.waste {color:var(--danger); font-size:12px;}
+.strategy {color:var(--muted); font-size:12px; text-align:right;}
 
+</style>
 </head>
 
 <body>
 
 <div class="container">
 
-<h2>Gym Planner</h2>
+<h1>Gym Optimizer</h1>
 
-<input id="apiKey" placeholder="API Key">
+<div class="input-group">
+<input id="apiKey" type="password" placeholder="Torn API Key">
+<span class="toggle" onclick="toggleKey()">Show</span>
+</div>
 
-<h4>Sleep Settings</h4>
-<input id="sleepStart" type="number" value="0" min="0" max="23">
-<input id="sleepEnd" type="number" value="8" min="0" max="23">
+<input id="sleepStart" type="number" value="0" min="0" max="23" placeholder="Sleep start">
+<input id="sleepEnd" type="number" value="8" min="0" max="23" placeholder="Wake hour">
 
-<button onclick="load()">Sync</button>
+<button onclick="load()">Optimize</button>
 
 <div id="card" class="card" style="display:none">
 
-<div class="item"><span>Energy</span><span id="energy"></span></div>
+<div class="row"><span>Energy</span><span id="energy"></span></div>
 
-<h4>Cooldown Breakdown</h4>
+<div class="section">
+<div class="row"><span>Drug Ready</span><span id="drugCd"></span></div>
+<div class="row"><span>Booster Ready</span><span id="boosterCd"></span></div>
+<div class="row"><span>Energy Ready</span><span id="energyReady"></span></div>
+<div class="row"><span>Final Jump</span><span id="finalJump"></span></div>
+</div>
 
-<div class="item"><span>Drug Ready</span><span id="drugCd"></span></div>
-<div class="item"><span>Booster Ready</span><span id="boosterCd"></span></div>
-<div class="item"><span>Energy Ready (1000)</span><span id="energyReady"></span></div>
-<div class="item"><span>Xanax Duration</span><span id="xanaxDuration"></span></div>
-<div class="item"><span>Final Jump</span><span id="finalJump"></span></div>
+<div class="strategy" id="strategy"></div>
 
-<h4>Scheduler (Calendar)</h4>
+<div class="section">
+<b>Scheduler</b>
 <div id="calendar"></div>
+</div>
 
-<h4>Timeline</h4>
+<div class="section">
+<b>Timeline</b>
 <div id="timeline" class="timeline"></div>
+</div>
 
 </div>
 
@@ -152,7 +194,6 @@ font-size:13px;
 
 <script>
 
-// ===== CONFIG =====
 const XANAX_ENERGY = 250;
 const MAX_ENERGY = 1000;
 const XANAX_CD = 480 * 60;
@@ -160,151 +201,191 @@ const XANAX_CD = 480 * 60;
 let dataStore;
 let timer;
 
-// ===== HELPERS =====
-function date(ts){ return new Date(ts).toLocaleString(); }
+// toggle API key visibility
+function toggleKey(){
+let input = document.getElementById("apiKey");
+let toggle = document.querySelector(".toggle");
 
-function fmt(sec){
-let h=Math.floor(sec/3600);
-let m=Math.floor((sec%3600)/60);
-return `${h}h ${m}m`;
+if(input.type === "password"){
+input.type = "text";
+toggle.textContent = "Hide";
+}else{
+input.type = "password";
+toggle.textContent = "Show";
+}
 }
 
+// helpers
+function date(ts){ return new Date(ts).toLocaleString(); }
+
 function inSleep(ts){
-let h=new Date(ts).getHours();
-let s=parseInt(sleepStart.value);
-let e=parseInt(sleepEnd.value);
-return h>=s && h<e;
+let h = new Date(ts).getHours();
+return h >= sleepStart.value && h < sleepEnd.value;
 }
 
 function shift(ts){
-let d=new Date(ts);
-d.setHours(parseInt(sleepEnd.value),0,0,0);
+let d = new Date(ts);
+d.setHours(sleepEnd.value,0,0,0);
 return d.getTime();
 }
 
-// ===== CALCULATE =====
-function calculate(){
+// ===== SIMULATION ENGINE =====
+function simulate(strategy){
 
-let now=Date.now();
-let energy=dataStore.energy;
-
-let xanaxNeeded=Math.ceil(Math.max(0,1000-energy)/250);
+let now = Date.now();
+let currentEnergy = dataStore.energy;
+let currentTime = now;
 
 let steps=[];
-let currentEnergy=energy;
-let nextTime=now;
+let waste=0;
 
-for(let i=0;i<xanaxNeeded;i++){
+while(currentEnergy < MAX_ENERGY){
 
-if(inSleep(nextTime)) nextTime=shift(nextTime);
+let takeNow = true;
 
-let raw=currentEnergy+250;
-let after=Math.min(1000,raw);
-let waste=Math.max(0,raw-1000);
+if(strategy !== "aggressive"){
 
-steps.push({time:nextTime,before:currentEnergy,after,waste});
+let bestWait=0;
+let bestWaste=9999;
 
-currentEnergy=after;
-nextTime+=XANAX_CD*1000;
+for(let i=0;i<=3;i++){
+let futureEnergy = currentEnergy + (i * dataStore.increment);
+let raw = futureEnergy + 250;
+let w = Math.max(0, raw - 1000);
+
+if(w < bestWaste){
+bestWaste = w;
+bestWait = i;
+}
+}
+
+if(bestWait > 0){
+
+let waitTime = bestWait * dataStore.interval * 1000;
+
+if(strategy === "efficient" || waitTime < XANAX_CD*1000){
+takeNow = false;
+
+currentTime += waitTime;
+currentEnergy += bestWait * dataStore.increment;
+continue;
+}
+}
+}
+
+// take xanax
+if(inSleep(currentTime)){
+currentTime = shift(currentTime);
+}
+
+let raw = currentEnergy + 250;
+let after = Math.min(1000, raw);
+let w = Math.max(0, raw - 1000);
+
+steps.push({
+time: currentTime,
+before: currentEnergy,
+after,
+waste: w
+});
+
+waste += w;
+currentEnergy = after;
+currentTime += XANAX_CD * 1000;
 }
 
 let energyReady = steps.length ? steps.at(-1).time : now;
-let xanaxDuration = steps.length>1 ? (steps.length-1)*XANAX_CD : 0;
+let final = Math.max(
+energyReady,
+now + dataStore.drug*1000,
+now + dataStore.booster*1000
+);
 
-let drugReady = now + dataStore.drug*1000;
-let boosterReady = now + dataStore.booster*1000;
-
-let final = Math.max(drugReady, boosterReady, energyReady);
-
-return {steps, energyReady, xanaxDuration, final, drugReady, boosterReady};
+return {steps, final, energyReady, waste, strategy};
 }
 
-// ===== UI RENDER =====
+// ===== OPTIMIZER =====
+function calculate(){
+
+let strategies = ["aggressive","balanced","efficient"];
+
+let results = strategies.map(simulate);
+
+results.sort((a,b)=>{
+if(a.final !== b.final) return a.final - b.final;
+if(a.waste !== b.waste) return a.waste - b.waste;
+return a.steps.length - b.steps.length;
+});
+
+let best = results[0];
+
+best.drugReady = Date.now() + dataStore.drug*1000;
+best.boosterReady = Date.now() + dataStore.booster*1000;
+
+return best;
+}
+
+// ===== UI =====
 function render(){
 
-let calc=calculate();
+let calc = calculate();
 
-energy.textContent=dataStore.energy;
+energy.textContent = dataStore.energy;
+drugCd.textContent = date(calc.drugReady);
+boosterCd.textContent = date(calc.boosterReady);
+energyReady.textContent = date(calc.energyReady);
+finalJump.textContent = date(calc.final);
+strategy.textContent = "Strategy: " + calc.strategy;
 
-drugCd.textContent=date(calc.drugReady);
-boosterCd.textContent=date(calc.boosterReady);
-energyReady.textContent=date(calc.energyReady);
-xanaxDuration.textContent=fmt(calc.xanaxDuration);
-finalJump.textContent=date(calc.final);
-
-// ===== CALENDAR VIEW =====
+// CALENDAR
 let calHTML="";
-let base=calc.final;
+let base = calc.final;
 
 for(let i=0;i<3;i++){
-
-calHTML+=`<div class="calendar-item">🏋️ Jump ${i+1}: ${date(base)}</div>`;
-
+calHTML += `<div class="event">🏋️ Jump ${i+1}: ${date(base)}</div>`;
 calc.steps.forEach(s=>{
-calHTML+=`<div class="calendar-item">💊 Xanax: ${date(s.time)}</div>`;
+calHTML += `<div class="event">💊 ${date(s.time)}</div>`;
 });
-
-base+=24*60*60*1000;
+base += 86400000;
 }
 
-calendar.innerHTML=calHTML;
+calendar.innerHTML = calHTML;
 
-// ===== TIMELINE VIEW =====
+// TIMELINE
 let events=[];
 
-// xanax
 calc.steps.forEach((s,i)=>{
-events.push({
-time:s.time,
-type:"xanax",
-text:`💊 Xanax #${i+1} (${s.before}→${s.after})`,
-waste:s.waste
-});
+events.push({time:s.time,type:"x",text:`💊 Xanax ${i+1}`,waste:s.waste});
 });
 
-// jumps
-let jumpTime=calc.final;
+let jt=calc.final;
 for(let i=0;i<3;i++){
-events.push({
-time:jumpTime,
-type:"jump",
-text:`🏋️ Jump ${i+1}`
-});
-jumpTime+=86400000;
+events.push({time:jt,type:"j",text:`Jump ${i+1}`});
+jt+=86400000;
 }
 
-// sort
 events.sort((a,b)=>a.time-b.time);
 
-// render timeline
 let html="";
-
-events.forEach(ev=>{
+events.forEach(e=>{
 html+=`
-<div class="timeline-item">
-<div class="timeline-dot"></div>
-<div class="timeline-content">
-
-<div><b>${date(ev.time)}</b></div>
-
-<div class="${ev.type==='jump'?'jump':'xanax'}">
-${ev.text}
+<div class="item">
+<div class="dot"></div>
+<div class="content">
+<b>${date(e.time)}</b>
+<div class="${e.type==='j'?'jump':'xanax'}">${e.text}</div>
+${e.waste>0?`<div class="waste">⚠️ Waste ${e.waste}</div>`:""}
 </div>
-
-${ev.waste>0?`<div class="waste">⚠️ Waste: ${ev.waste}</div>`:""}
-
-</div>
-</div>
-`;
+</div>`;
 });
 
-timeline.innerHTML=html;
+timeline.innerHTML = html;
+
 }
 
-// ===== LOOP =====
+// loop
 function start(){
 clearInterval(timer);
-
 timer=setInterval(()=>{
 if(dataStore.drug>0) dataStore.drug--;
 if(dataStore.booster>0) dataStore.booster--;
@@ -312,18 +393,21 @@ render();
 },1000);
 }
 
-// ===== LOAD =====
+// load
 async function load(){
 
-let key=apiKey.value;
+let key = apiKey.value.trim();
+if(!key){ alert("API key required"); return; }
 
-let res=await fetch(`https://api.torn.com/user/?selections=cooldowns,energy&key=${key}`);
-let d=await res.json();
+let res = await fetch(`https://api.torn.com/user/?selections=cooldowns,energy&key=${key}`);
+let d = await res.json();
 
-dataStore={
-energy:d.energy.current,
-drug:d.cooldowns.drug,
-booster:d.cooldowns.booster
+dataStore = {
+energy: d.energy.current,
+drug: d.cooldowns.drug,
+booster: d.cooldowns.booster,
+increment: d.energy.increment,
+interval: d.energy.interval
 };
 
 card.style.display="block";
@@ -331,7 +415,6 @@ card.style.display="block";
 render();
 start();
 }
-
 </script>
 
 </body>
