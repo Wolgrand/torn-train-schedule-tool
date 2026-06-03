@@ -381,7 +381,7 @@ errorBox.style.display="block";
 return;
 }
 
-let res = await fetch(`https://api.torn.com/user/?selections=cooldowns,energy&key=${key}`);
+let res = await fetch(`https://api.torn.com/user/?selections=cooldowns,bars&key=${key}`);
 let d = await res.json();
 
 // ✅ HANDLE ERRORS SAFELY
