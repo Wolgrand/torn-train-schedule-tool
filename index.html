@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Torn Gym Optimizer</title>
+<title>Gym Optimizer PRO</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 
 <style>
 :root {
@@ -27,35 +29,31 @@ display:flex;
 justify-content:center;
 }
 
-.container {
-max-width:520px;
-width:100%;
-padding:16px;
-}
+.container { max-width:560px; padding:16px; }
 
 h1 { text-align:center; }
 
-input, button {
+input,button {
 width:100%;
-padding:10px;
+padding:12px;
 border:none;
 border-radius:10px;
-margin-bottom:8px;
+margin-bottom:10px;
 background:var(--card);
 color:white;
 }
 
-button { background:var(--accent); cursor:pointer; }
+button { background:var(--accent); }
 
 .input-group { position:relative; }
 
 .toggle {
 position:absolute;
-right:12px;
+right:10px;
 top:50%;
 transform:translateY(-50%);
-font-size:12px;
 cursor:pointer;
+font-size:12px;
 color:var(--muted);
 }
 
@@ -72,13 +70,10 @@ justify-content:space-between;
 padding:5px 0;
 }
 
-.section { margin-top:12px; }
-
 .timeline {
 position:relative;
 padding-left:25px;
 }
-
 .timeline::before {
 content:"";
 position:absolute;
@@ -89,8 +84,7 @@ width:2px;
 background:var(--accent);
 }
 
-.item { margin-bottom:15px; position:relative; }
-
+.item { margin-bottom:14px; position:relative; }
 .dot {
 position:absolute;
 left:-3px;
@@ -99,16 +93,23 @@ width:12px;
 height:12px;
 border-radius:50%;
 border:2px solid var(--accent);
-background:var(--bg);
 }
 
-.content { padding-left:14px; font-size:13px; }
+.content { padding-left:15px; font-size:13px; }
 
 .jump { color:var(--success); }
 .xanax { color:var(--accent); }
-.waste { color:var(--danger); font-size:12px; }
+.wait { color:#ffaa00; }
+.waste { color:var(--danger); }
 
-canvas { margin-top:10px; }
+.error {
+background:#ff5d5d20;
+padding:10px;
+border-radius:8px;
+margin-top:10px;
+color:#ff5d5d;
+font-size:13px;
+}
 
 </style>
 </head>
@@ -117,7 +118,7 @@ canvas { margin-top:10px; }
 
 <div class="container">
 
-<h1>Gym Optimizer</h1>
+<h1>Gym Optimizer PRO</h1>
 
 <div class="input-group">
 <input id="apiKey" type="password" placeholder="API Key">
@@ -129,16 +130,18 @@ canvas { margin-top:10px; }
 
 <button onclick="load()">Optimize</button>
 
+<div id="errorBox" class="error" style="display:none"></div>
+
 <div id="card" class="card" style="display:none">
 
 <div class="row"><span>Energy</span><span id="energy"></span></div>
-<div class="row"><span>Final Jump</span><span id="finalJump"></span></div>
 <div class="row"><span>Strategy</span><span id="strategy"></span></div>
+<div class="row"><span>Next Jump</span><span id="jump"></span></div>
 
-<div class="section"><b>Timeline</b></div>
+<h3>Timeline</h3>
 <div id="timeline" class="timeline"></div>
 
-<div class="section"><b>Energy vs Time</b></div>
+<h3>Chart</h3>
 <canvas id="chart"></canvas>
 
 </div>
@@ -147,55 +150,47 @@ canvas { margin-top:10px; }
 
 <script>
 
-const XANAX_ENERGY = 250;
-const MAX_ENERGY = 1000;
-const XANAX_CD = 480 * 60;
-
-let dataStore;
-let chart;
+const MAX=1000, X=250, CD=480*60;
+let dataStore, chart;
 
 // toggle key
 function toggleKey(){
-let k=apiKey;
-k.type = k.type === "password" ? "text" : "password";
+apiKey.type = apiKey.type==="password" ? "text" : "password";
 }
 
 // helpers
-function date(ts){ return new Date(ts).toLocaleTimeString(); }
+function date(t){ return new Date(t).toLocaleTimeString(); }
 
-function inSleep(ts){
-let h=new Date(ts).getHours();
+function inSleep(t){
+let h=new Date(t).getHours();
 return h>=sleepStart.value && h<sleepEnd.value;
 }
 
-function shift(ts){
-let d=new Date(ts);
+function shift(t){
+let d=new Date(t);
 d.setHours(sleepEnd.value,0,0,0);
 return d.getTime();
 }
 
-// simulate
+// simulation
 function simulate(strategy){
 
-let now=Date.now();
 let energy=dataStore.energy;
-let time=now;
-let steps=[];
-let waste=0;
+let time=Date.now();
+let steps=[], waste=0;
 
-while(energy<MAX_ENERGY){
+while(energy<MAX){
 
 let take=true;
 
 if(strategy!=="aggressive"){
 
-let bestWait=0;
-let bestWaste=999;
+let bestWait=0, bestWaste=999;
 
 for(let i=0;i<=3;i++){
-let future=energy+(i*dataStore.increment);
-let raw=future+250;
-let w=Math.max(0,raw-1000);
+let future=energy+i*dataStore.inc;
+let raw=future+X;
+let w=Math.max(0,raw-MAX);
 
 if(w<bestWaste){
 bestWaste=w;
@@ -204,172 +199,160 @@ bestWait=i;
 }
 
 if(bestWait>0){
-let waitTime=bestWait*dataStore.interval*1000;
+let waitTime=bestWait*dataStore.int*1000;
 
-if(strategy==="efficient" || waitTime < XANAX_CD*1000){
+if(strategy==="efficient" || waitTime<CD*1000){
 take=false;
 time+=waitTime;
-energy+=bestWait*dataStore.increment;
+energy+=bestWait*dataStore.inc;
+
+steps.push({time,type:"wait"});
 continue;
 }
 }
 }
 
+// xanax
 if(inSleep(time)) time=shift(time);
 
-let raw=energy+250;
-let after=Math.min(1000,raw);
-let w=Math.max(0,raw-1000);
+let raw=energy+X;
+let after=Math.min(MAX,raw);
+let w=Math.max(0,raw-MAX);
 
-steps.push({time,energy:after,waste:w});
-waste+=w;
+steps.push({time,type:"x",energy:after,waste:w});
 
 energy=after;
-time+=XANAX_CD*1000;
+waste+=w;
+time+=CD*1000;
 }
 
 let final=Math.max(time,
 Date.now()+dataStore.drug*1000,
 Date.now()+dataStore.booster*1000);
 
-return {steps, final, waste, strategy};
+return {steps,final,waste,strategy};
 }
 
-// optimizer
-function calculateAll(){
-return ["aggressive","balanced","efficient"].map(simulate);
+// calculate
+function calculate(){
+let res=["aggressive","balanced","efficient"].map(simulate);
+res.sort((a,b)=>a.final-b.final || a.waste-b.waste);
+return res;
 }
 
 // chart
-function drawChart(results){
+function draw(res){
 
-let datasets=[];
-
-// generate curves
-results.forEach(r=>{
-
+let datasets=res.map(r=>{
 let data=[];
-let energy=dataStore.energy;
-let time=Date.now();
+let energy=dataStore.energy, t=Date.now();
 
-data.push({x:time,y:energy});
+data.push({x:t,y:energy});
 
 r.steps.forEach(s=>{
-data.push({x:s.time,y:s.energy});
+if(s.energy) data.push({x:s.time,y:s.energy});
 });
 
-datasets.push({
+return {
 label:r.strategy,
 data,
-borderWidth: r.strategy==="efficient"?3:1,
-borderColor:
-r.strategy==="aggressive"?"#ff5d5d":
-r.strategy==="balanced"?"#ffaa00":"#4cd964",
+borderWidth:r.strategy==="efficient"?3:1,
+borderColor:r.strategy==="aggressive"?"#ff5d5d":r.strategy==="balanced"?"#ffaa00":"#4cd964",
 tension:0.3
-});
-});
-
-// sleep zones plugin
-const sleepPlugin = {
-id:'sleepZones',
-beforeDraw(chart){
-
-let ctx=chart.ctx;
-let xScale=chart.scales.x;
-
-for(let i=0;i<48;i++){
-
-let t1=Date.now()+i*3600000;
-let t2=t1+3600000;
-
-if(inSleep(t1)){
-let x1=xScale.getPixelForValue(t1);
-let x2=xScale.getPixelForValue(t2);
-
-ctx.fillStyle="rgba(255,255,255,0.03)";
-ctx.fillRect(x1,0,x2-x1,chart.height);
-}
-}
-}
 };
+});
 
 if(chart) chart.destroy();
 
-chart=new Chart(document.getElementById("chart"),{
+chart=new Chart(chart,{
 type:"line",
 data:{datasets},
 options:{
 parsing:false,
+plugins:{
+zoom:{
+zoom:{wheel:{enabled:true},mode:"x"},
+pan:{enabled:true,mode:"x"}
+},
+tooltip:{
+callbacks:{
+label:(ctx)=>`Energy: ${ctx.parsed.y}`
+}
+}
+},
 scales:{
-x:{type:"time", ticks:{color:"#9aa4b2"}},
-y:{min:0,max:1000, ticks:{color:"#9aa4b2"}}
-},
-plugins:{legend:{labels:{color:"#9aa4b2"}}}
-},
-plugins:[sleepPlugin]
+x:{type:"time"},
+y:{min:0,max:1000}
+}
+}
 });
 }
 
 // UI
 function render(){
 
-let results=calculateAll();
-results.sort((a,b)=>a.final-b.final || a.waste-b.waste);
-
-let best=results[0];
+let res=calculate();
+let best=res[0];
 
 energy.textContent=dataStore.energy;
-finalJump.textContent=date(best.final);
 strategy.textContent=best.strategy;
+jump.textContent=date(best.final);
 
 // timeline
-let events=[];
-
-best.steps.forEach((s,i)=>{
-events.push({time:s.time,text:`💊 Xanax ${i+1}`,w:s.waste});
-});
-
-let jt=best.final;
-for(let i=0;i<3;i++){
-events.push({time:jt,text:`🏋️ Jump ${i+1}`});
-jt+=86400000;
-}
-
-events.sort((a,b)=>a.time-b.time);
-
 let html="";
-events.forEach(e=>{
-html+=`
-<div class="item">
-<div class="dot"></div>
-<div class="content">
-<b>${date(e.time)}</b>
-<div>${e.text}</div>
-${e.w>0?`<div class="waste">⚠️ ${e.w}</div>`:""}
-</div>
-</div>`;
+best.steps.forEach(s=>{
+html+=`<div class="item"><div class="dot"></div><div class="content">
+<b>${date(s.time)}</b>
+<div class="${s.type==="x"?"xanax":"wait"}">${s.type==="x"?"💊 Xanax":"⏳ Wait"}</div>
+${s.waste?`<div class="waste">⚠ ${s.waste}</div>`:""}
+</div></div>`;
 });
-
 timeline.innerHTML=html;
 
-// chart
-drawChart(results);
+draw(res);
 }
 
-// load
+// FIXED LOAD (VERY IMPORTANT)
 async function load(){
 
-let key=apiKey.value;
+errorBox.style.display="none";
+
+let key=apiKey.value.trim();
+if(!key){
+errorBox.innerText="API key required";
+errorBox.style.display="block";
+return;
+}
 
 let res=await fetch(`https://api.torn.com/user/?selections=cooldowns,energy&key=${key}`);
 let d=await res.json();
 
+// ✅ BULLETPROOF CHECKS
+if(d.error){
+errorBox.innerText="API error: "+d.error.error;
+errorBox.style.display="block";
+return;
+}
+
+if(!d.cooldowns){
+errorBox.innerText="Missing cooldowns permission";
+errorBox.style.display="block";
+return;
+}
+
+if(!d.energy || typeof d.energy.current==="undefined"){
+errorBox.innerText="Energy data missing (check API permissions)";
+errorBox.style.display="block";
+return;
+}
+
+// ✅ SAFE ASSIGNMENT
 dataStore={
 energy:d.energy.current,
-drug:d.cooldowns.drug,
-booster:d.cooldowns.booster,
-increment:d.energy.increment,
-interval:d.energy.interval
+drug:d.cooldowns.drug||0,
+booster:d.cooldowns.booster||0,
+inc:d.energy.increment||5,
+int:d.energy.interval||600
 };
 
 card.style.display="block";
