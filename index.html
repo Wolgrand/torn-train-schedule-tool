@@ -18,301 +18,292 @@
 
 body {
 margin:0;
-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
 background:var(--bg);
 color:var(--text);
-display:flex;
-justify-content:center;
+font-family:-apple-system;
 }
 
-.container {
-width:100%;
-max-width:420px;
-padding:16px;
-}
-
-h1 {text-align:center;}
+.container { max-width:900px; margin:auto; padding:16px; }
 
 input,button {
 width:100%;
-padding:12px;
-border-radius:10px;
+padding:10px;
+margin-bottom:6px;
+border-radius:8px;
 border:none;
-margin-bottom:10px;
-background:var(--card);
+background:#1a1f2b;
 color:white;
 }
 
-button {
-background:var(--accent);
-font-weight:600;
-cursor:pointer;
-}
+button { background:var(--accent); cursor:pointer; }
 
 .card {
 background:var(--card);
-padding:16px;
-border-radius:12px;
+padding:10px;
+border-radius:10px;
 margin-top:10px;
 }
 
-.item {
+/* ===== TIMELINE ===== */
+.timeline-wrap {
+overflow-x:auto;
+margin-top:10px;
+}
+
+.timeline {
+position:relative;
+height:140px;
+min-width:1200px;
+background:#111;
+border-radius:10px;
+}
+
+.time-axis {
+position:absolute;
+top:0;
+left:0;
+width:100%;
+height:30px;
+font-size:11px;
+color:#9aa4b2;
 display:flex;
-justify-content:space-between;
-padding:8px 0;
 }
 
-.big {
+.time-axis div {
+flex:1;
 text-align:center;
-margin-top:10px;
-font-weight:600;
+border-left:1px solid #222;
 }
 
-.ready {color:var(--success);}
-.notready {color:var(--danger);}
+/* events */
+.event {
+position:absolute;
+height:40px;
+top:60px;
+border-radius:6px;
+padding:3px;
+font-size:11px;
+white-space:nowrap;
+cursor:pointer;
+}
 
-.section {
-margin-top:15px;
-font-size:13px;
-color:var(--muted);
-line-height:1.4em;
+.xanax { background:#5da8ff; }
+.jump { background:#4cd964; }
+.now { background:#ff5d5d; height:100%; width:2px; }
+
+/* hover */
+.event:hover {
+transform:scale(1.05);
+}
+
+/* sleep overlay */
+.sleep {
+position:absolute;
+top:0;
+height:100%;
+background:rgba(0,0,0,0.4);
 }
 </style>
+
 </head>
 
 <body>
+
 <div class="container">
 
-<h1>Gym Planner</h1>
+<h2>Gym Planner</h2>
 
-<input id="apiKey" type="password" placeholder="Torn API Key">
+<input id="apiKey" placeholder="API Key">
+
+<h4>Sleep Settings</h4>
+<input id="sleepStart" type="number" value="0">
+<input id="sleepEnd" type="number" value="8">
+
 <button onclick="load()">Sync</button>
 
 <div id="card" class="card" style="display:none">
 
-<div class="item"><span>Energy</span><span id="energy"></span></div>
-<div class="item"><span>Drug CD</span><span id="drug"></span></div>
-<div class="item"><span>Booster CD</span><span id="booster"></span></div>
-<div class="item"><span>Xanax Needed</span><span id="xanax"></span></div>
-
-<div class="item"><span>Status</span><span id="status"></span></div>
-
-<div class="big" id="nextJump"></div>
-<div class="big" id="countdown"></div>
-
-<div class="section" id="timeline"></div>
+<h3>Interactive Timeline</h3>
+<div class="timeline-wrap">
+<div class="timeline" id="timeline"></div>
+</div>
 
 </div>
 
 </div>
 
 <script>
+
+const XANAX_CD = 480 * 60 * 1000;
 const XANAX_ENERGY = 250;
-const MAX_ENERGY = 1000;
-const XANAX_CD = 480 * 60;
 
-const SLEEP_START = 0;
-const SLEEP_END = 8;
+let dataStore;
+let pxPerHour = 50;
 
-let dataStore = {};
-let timer;
-
-// ===== HELPERS =====
-function fmt(sec){
-if(sec<=0) return "Ready";
-let h=Math.floor(sec/3600);
-let m=Math.floor((sec%3600)/60);
-let s=sec%60;
-return `${h}h ${m}m ${s}s`;
-}
-
-function date(ts){
-return new Date(ts).toLocaleString();
-}
-
+// helpers
 function inSleep(ts){
 let h=new Date(ts).getHours();
-return (h>=SLEEP_START && h<SLEEP_END);
+let s=+sleepStart.value;
+let e=+sleepEnd.value;
+return h>=s && h<e;
 }
 
-function shiftToWake(ts){
+function shift(ts){
 let d=new Date(ts);
-if(inSleep(ts)) d.setHours(SLEEP_END,0,0,0);
+d.setHours(sleepEnd.value,0,0,0);
 return d.getTime();
 }
 
-// ===== NOTIFICATIONS =====
-function notify(msg){
-if(Notification.permission==="granted"){
-new Notification("Torn Planner",{body:msg});
-}
-}
-
-async function requestNotif(){
-if(Notification.permission!=="granted"){
-await Notification.requestPermission();
-}
-}
-
-// ===== CORE CALC =====
+// core calculation
 function calculate(){
 
 let now=Date.now();
 let energy=dataStore.energy;
 
-let need=Math.max(0,MAX_ENERGY-energy);
-let xanax=Math.ceil(need / XANAX_ENERGY);
+let need=Math.max(0,1000-energy);
+let xanax=Math.ceil(need/250);
 
 let steps=[];
 let currentEnergy=energy;
-let nextTime=now;
+let t=now;
 
 for(let i=0;i<xanax;i++){
 
-if(inSleep(nextTime)){
-nextTime=shiftToWake(nextTime);
-}
+if(inSleep(t)) t=shift(t);
 
-let before=currentEnergy;
-let raw=before+XANAX_ENERGY;
-let after=Math.min(MAX_ENERGY,raw);
-let waste=Math.max(0,raw-MAX_ENERGY);
+let raw=currentEnergy+250;
+let waste=Math.max(0,raw-1000);
+let after=Math.min(1000,raw);
 
-steps.push({time:nextTime,before,after,waste});
+steps.push({time:t,waste,i});
 
 currentEnergy=after;
-nextTime+=XANAX_CD*1000;
+t+=XANAX_CD;
 }
 
-let cdFinish=now+Math.max(dataStore.drug,dataStore.booster)*1000;
-let lastDose=steps.length?steps.at(-1).time:now;
-let final=Math.max(cdFinish,lastDose);
+let final=t;
 
-let ready=(energy>=MAX_ENERGY && dataStore.drug<=0 && dataStore.booster<=0);
-
-return {steps,xanax,final,ready};
+return {steps,final};
 }
 
-// ===== UI =====
-function updateUI(){
+// render timeline
+function renderTimeline(){
+
+let container=document.getElementById("timeline");
+container.innerHTML="";
 
 let calc=calculate();
 
-energy.textContent=dataStore.energy;
-drug.textContent=fmt(dataStore.drug);
-booster.textContent=fmt(dataStore.booster);
-xanax.textContent=calc.xanax;
+let start=Date.now();
+let end=calc.final + 3*86400000;
 
-status.textContent=calc.ready?"READY ✅":"WAIT ❌";
-status.className=calc.ready?"ready":"notready";
+let totalHours=(end-start)/3600000;
+container.style.minWidth = (totalHours * pxPerHour) + "px";
 
-nextJump.textContent=calc.ready?"JUMP NOW!":"Next Jump: "+date(calc.final);
+// axis
+let axis=document.createElement("div");
+axis.className="time-axis";
 
-let diff=Math.floor((calc.final-Date.now())/1000);
-countdown.textContent="Countdown: "+fmt(diff);
+for(let i=0;i<totalHours;i+=4){
 
-// timeline
-let html="<b>Xanax Plan:</b><br>";
+let d=new Date(start + i*3600000);
+let el=document.createElement("div");
+el.innerText = d.getHours()+":00";
+axis.appendChild(el);
+}
 
-calc.steps.forEach((s,i)=>{
+container.appendChild(axis);
 
-let waste=s.waste>0
-?` <span style="color:#ff5d5d">(+${s.waste} wasted ⚠️)</span>`
-:"";
+// sleep blocks
+for(let t=start; t<end; t+=86400000){
 
-let sleep=inSleep(s.time)?" 🌙 delayed":"";
+let sleepStartTs = new Date(t);
+sleepStartTs.setHours(sleepStart.value,0,0,0);
 
-html+=`${i+1}️⃣ ${date(s.time)}${sleep}<br>${s.before} → ${s.after}${waste}<br><br>`;
+let sleepEndTs = new Date(t);
+sleepEndTs.setHours(sleepEnd.value,0,0,0);
 
+let left=((sleepStartTs-start)/3600000)*pxPerHour;
+let width=((sleepEndTs-sleepStartTs)/3600000)*pxPerHour;
+
+let div=document.createElement("div");
+div.className="sleep";
+div.style.left=left+"px";
+div.style.width=width+"px";
+
+container.appendChild(div);
+}
+
+// now marker
+let nowLine=document.createElement("div");
+nowLine.className="event now";
+nowLine.style.left="0px";
+container.appendChild(nowLine);
+
+// xanax events
+calc.steps.forEach(s=>{
+let e=document.createElement("div");
+
+e.className="event xanax";
+let left=((s.time-start)/3600000)*pxPerHour;
+
+e.style.left=left+"px";
+e.style.width="60px";
+e.innerText=`💊 #${s.i+1}`;
+
+if(s.waste>0){
+e.style.background="#ff5d5d";
+e.title="Waste: "+s.waste;
+}
+
+container.appendChild(e);
 });
 
-timeline.innerHTML=html;
+// jumps (3)
+let jump=calc.final;
+for(let i=0;i<3;i++){
 
-// notification trigger
-if(calc.steps.length){
-let next=calc.steps[0];
-if(Math.abs(Date.now()-next.time)<1500){
-notify("Time to take Xanax 💊");
-}
-}
+let e=document.createElement("div");
+e.className="event jump";
+
+let left=((jump-start)/3600000)*pxPerHour;
+
+e.style.left=left+"px";
+e.style.width="70px";
+e.innerText="🏋️ Jump";
+
+container.appendChild(e);
+
+jump+=86400000;
 }
 
-// ===== LIVE LOOP =====
+}
+
+// loop
 function start(){
-
-clearInterval(timer);
-
-timer=setInterval(()=>{
-
-if(dataStore.drug>0) dataStore.drug--;
-if(dataStore.booster>0) dataStore.booster--;
-
-// ✅ ENERGY REGEN (REAL API BASED)
-dataStore.tick--;
-
-if (dataStore.tick <= 0) {
-dataStore.energy += dataStore.increment;
-dataStore.tick = dataStore.interval;
-
-if (dataStore.energy > MAX_ENERGY) {
-dataStore.energy = MAX_ENERGY;
-}
+clearInterval(window.t);
+window.t=setInterval(renderTimeline,1000);
 }
 
-updateUI();
-
-},1000);
-}
-
-// ===== API LOAD =====
+// load API
 async function load(){
 
-await requestNotif();
+let key=apiKey.value;
 
-let key=apiKey.value.trim();
+let res=await fetch(`https://api.torn.com/user/?selections=cooldowns,energy&key=${key}`);
+let d=await res.json();
 
-if(!key){
-alert("API key required");
-return;
-}
-
-try{
-
-const res = await fetch(`https://api.torn.com/user/?selections=cooldowns,bars&key=${key}`);
-const d = await res.json();
-
-console.log("API:", d);
-
-if(!d.cooldowns || !d.energy){
-alert("API key missing required permissions (cooldowns, bars)");
-return;
-}
-
-dataStore = {
-energy: d.energy.current,
-drug: d.cooldowns.drug,
-booster: d.cooldowns.booster,
-increment: d.energy.increment,
-interval: d.energy.interval,
-tick: d.energy.ticktime
+dataStore={
+energy:d.energy.current
 };
 
 card.style.display="block";
 
-updateUI();
+renderTimeline();
 start();
-
-}catch(e){
-alert("API error");
-console.error(e);
-}
-}
-
-// ===== SERVICE WORKER =====
-if('serviceWorker' in navigator){
-navigator.serviceWorker.register('sw.js');
 }
 
 </script>
+
 </body>
 </html>
